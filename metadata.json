@@ -1,0 +1,6 @@
+{
+  "name": "KisanAI - AI Farming Assistant for Indian Farmers",
+  "description": "Comprehensive, multilingual, location-aware AI personal farming companion for Indian farmers across all states and agro-climatic zones.",
+  "requestFramePermissions": ["camera", "microphone", "geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
