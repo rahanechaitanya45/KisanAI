@@ -28,8 +28,9 @@ import { ExpertEscalation } from './components/ExpertEscalation';
 import { OfficerDashboard } from './components/OfficerDashboard';
 import { FarmerOnboarding } from './components/FarmerOnboarding';
 
-// Authentication Components & Service
+// Authentication & Cloud Firestore Services
 import { authService } from './services/authService';
+import { firestoreService } from './services/firestoreService';
 import { AuthLayout } from './components/auth/AuthLayout';
 import { PhoneLoginForm } from './components/auth/PhoneLoginForm';
 import { OTPVerification } from './components/auth/OTPVerification';
@@ -58,7 +59,7 @@ type AuthViewMode =
 export function App() {
   // 1. Authentication State
   const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
-  const [authView, setAuthView] = useState<AuthViewMode>('app');
+  const [authView, setAuthView] = useState<AuthViewMode>(() => (authService.getSession() ? 'app' : 'landing'));
   const [pendingPhone, setPendingPhone] = useState<string>('');
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authError, setAuthError] = useState<string>('');
@@ -68,9 +69,7 @@ export function App() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY_FARMER);
       if (saved) return JSON.parse(saved);
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
     return DEMO_FARMERS[0].farmer;
   });
 
@@ -132,7 +131,77 @@ export function App() {
     };
   }, []);
 
-  // Save changes to localStorage
+  // Listen to Auth Service state updates
+  useEffect(() => {
+    const unsubscribe = authService.subscribe((user) => {
+      if (user) {
+        setSession(authService.getSession());
+        // If current view is a login/landing view, move to app or wizard
+        if (authView === 'landing' || authView === 'login-phone' || authView === 'login-email' || authView === 'signup') {
+          if (!user.isOnboarded) {
+            setAuthView('onboarding-wizard');
+          } else {
+            setAuthView('app');
+          }
+        }
+      } else {
+        setSession(null);
+      }
+    });
+    return unsubscribe;
+  }, [authView]);
+
+  // Real-time Firestore Subscriptions when user is authenticated
+  useEffect(() => {
+    const userId = session?.user?.id;
+    if (!userId) return;
+
+    // 1. Subscribe to Farmer Profile in Firestore
+    const unsubFarmer = firestoreService.subscribeFarmerProfile(userId, (remoteProfile) => {
+      if (remoteProfile) {
+        setFarmer(remoteProfile);
+        if (remoteProfile.farms && remoteProfile.farms.length > 0) {
+          if (!remoteProfile.farms.some((f) => f.id === selectedFarmId)) {
+            setSelectedFarmId(remoteProfile.farms[0].id);
+          }
+          if (remoteProfile.farms[0]?.plots?.length > 0) {
+            setSelectedPlotId(remoteProfile.farms[0].plots[0].id);
+          }
+        }
+      }
+    });
+
+    // 2. Subscribe to Tasks in Firestore
+    const unsubTasks = firestoreService.subscribeTasks(userId, (remoteTasks) => {
+      if (remoteTasks && remoteTasks.length > 0) {
+        setTasks(remoteTasks);
+      }
+    });
+
+    // 3. Subscribe to Diary Entries in Firestore
+    const unsubDiary = firestoreService.subscribeDiaryEntries(userId, (remoteDiary) => {
+      if (remoteDiary && remoteDiary.length > 0) {
+        setDiaryEntries(remoteDiary);
+      }
+    });
+
+    // 4. Subscribe to Expert Tickets in Firestore
+    const isOfficer = session?.user?.role === 'AGRICULTURAL_OFFICER';
+    const unsubTickets = firestoreService.subscribeExpertTickets(userId, isOfficer, (remoteTickets) => {
+      if (remoteTickets && remoteTickets.length > 0) {
+        setExpertTickets(remoteTickets);
+      }
+    });
+
+    return () => {
+      unsubFarmer();
+      unsubTasks();
+      unsubDiary();
+      unsubTickets();
+    };
+  }, [session?.user?.id, session?.user?.role]);
+
+  // Save changes to localStorage as secondary backup
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY_FARMER, JSON.stringify(farmer));
@@ -159,7 +228,7 @@ export function App() {
 
   // Derived selected farm & plot
   const selectedFarm =
-    farmer.farms.find((f) => f.id === selectedFarmId) || farmer.farms[0] || ({} as Farm);
+    farmer.farms?.find((f) => f.id === selectedFarmId) || farmer.farms?.[0] || ({} as Farm);
   const selectedPlot =
     selectedFarm?.plots?.find((p) => p.id === selectedPlotId) ||
     selectedFarm?.plots?.[0] ||
@@ -196,7 +265,6 @@ export function App() {
       if (res.success && res.session) {
         setSession(res.session);
         if (res.user) {
-          // Sync profile
           setFarmer((prev) => ({
             ...prev,
             name: res.user?.name || prev.name,
@@ -266,6 +334,41 @@ export function App() {
     }
   };
 
+  const handleGoogleAuth = async () => {
+    setAuthLoading(true);
+    setAuthError('');
+    try {
+      const res = await authService.loginWithGoogle();
+      setAuthLoading(false);
+      if (res.success && res.session) {
+        setSession(res.session);
+        if (res.user) {
+          setFarmer((prev) => ({
+            ...prev,
+            name: res.user?.name || prev.name,
+            phone: res.user?.phone || prev.phone,
+            state: res.user?.state || prev.state,
+            district: res.user?.district || prev.district,
+            preferredLanguage: res.user?.preferredLanguage || prev.preferredLanguage,
+          }));
+        }
+        if (res.requiresOnboarding || !res.user?.isOnboarded) {
+          setAuthView('onboarding-wizard');
+        } else {
+          setAuthView('app');
+        }
+        return { success: true };
+      } else {
+        setAuthError(res.message || 'Google login failed');
+        return { success: false, message: res.message };
+      }
+    } catch (e: any) {
+      setAuthLoading(false);
+      setAuthError(e.message || 'Google login error');
+      return { success: false, message: e.message };
+    }
+  };
+
   const handleSignup = async (payload: any) => {
     setAuthLoading(true);
     setAuthError('');
@@ -331,11 +434,12 @@ export function App() {
     }
   };
 
-  const handleQuickDemoLogin = (index: number) => {
+  const handleQuickDemoLogin = async (index: number) => {
     const demo = DEMO_FARMERS[index];
     if (!demo) return;
 
-    const demoSession = authService.loginWithDemoAccount(index);
+    setAuthLoading(true);
+    const demoSession = await authService.loginWithDemoAccount(index);
     setSession(demoSession);
     setFarmer(demo.farmer);
     setSelectedFarmId(demo.farmer.farms[0]?.id || 'farm-1');
@@ -344,6 +448,7 @@ export function App() {
     setTasks(demo.tasks);
     setDiaryEntries(demo.diary);
     setExpertTickets(demo.tickets);
+    setAuthLoading(false);
     setAuthView('app');
   };
 
@@ -355,7 +460,8 @@ export function App() {
 
   const handleUpdateProfile = async (updated: FarmerProfile) => {
     setFarmer(updated);
-    if (session) {
+    if (session?.user?.id) {
+      await firestoreService.saveFarmerProfile(session.user.id, updated).catch(() => {});
       await authService.updateUserProfile({
         name: updated.name,
         phone: updated.phone,
@@ -364,13 +470,20 @@ export function App() {
         village: updated.village,
         preferredLanguage: updated.preferredLanguage,
         farmingExperienceYears: updated.farmingExperienceYears,
+        isOnboarded: true,
       });
     }
   };
 
   // General App Handlers
   const handleSelectLanguage = (lang: LanguageCode) => {
-    setFarmer((prev) => ({ ...prev, preferredLanguage: lang }));
+    setFarmer((prev) => {
+      const updated = { ...prev, preferredLanguage: lang };
+      if (session?.user?.id) {
+        firestoreService.saveFarmerProfile(session.user.id, updated).catch(() => {});
+      }
+      return updated;
+    });
   };
 
   const handleLoadDemoFarmer = (index: number) => {
@@ -378,7 +491,13 @@ export function App() {
   };
 
   const handleToggleRole = (role: 'FARMER' | 'AGRICULTURAL_OFFICER') => {
-    setFarmer((prev) => ({ ...prev, role }));
+    setFarmer((prev) => {
+      const updated = { ...prev, role };
+      if (session?.user?.id) {
+        firestoreService.saveFarmerProfile(session.user.id, updated).catch(() => {});
+      }
+      return updated;
+    });
     if (role === 'AGRICULTURAL_OFFICER') {
       setActiveTab('officer');
     } else {
@@ -387,9 +506,14 @@ export function App() {
   };
 
   const handleCompleteTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
-    );
+    setTasks((prev) => {
+      const updated = prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t));
+      const modifiedTask = updated.find((t) => t.id === taskId);
+      if (modifiedTask && session?.user?.id) {
+        firestoreService.upsertTask(session.user.id, modifiedTask).catch(() => {});
+      }
+      return updated;
+    });
   };
 
   const handleAddTask = (newTask: Partial<FarmTask>) => {
@@ -406,26 +530,41 @@ export function App() {
       whyExplanation: newTask.whyExplanation,
     };
     setTasks((prev) => [task, ...prev]);
+    if (session?.user?.id) {
+      firestoreService.upsertTask(session.user.id, task).catch(() => {});
+    }
   };
 
   const handleAddDiaryEntry = (entry: FarmDiaryEntry) => {
     setDiaryEntries((prev) => [entry, ...prev]);
+    if (session?.user?.id) {
+      firestoreService.saveDiaryEntry(session.user.id, entry).catch(() => {});
+    }
   };
 
   const handleDeleteDiaryEntry = (entryId: string) => {
     setDiaryEntries((prev) => prev.filter((e) => e.id !== entryId));
+    if (session?.user?.id) {
+      firestoreService.deleteDiaryEntry(entryId).catch(() => {});
+    }
   };
 
   const handleUpdateSoil = (plotId: string, updatedSoil: SoilProfile) => {
-    setFarmer((prev) => ({
-      ...prev,
-      farms: prev.farms.map((farm) => ({
-        ...farm,
-        plots: farm.plots.map((plot) =>
-          plot.id === plotId ? { ...plot, soil: updatedSoil } : plot
-        ),
-      })),
-    }));
+    setFarmer((prev) => {
+      const updated: FarmerProfile = {
+        ...prev,
+        farms: prev.farms.map((farm) => ({
+          ...farm,
+          plots: farm.plots.map((plot) =>
+            plot.id === plotId ? { ...plot, soil: updatedSoil } : plot
+          ),
+        })),
+      };
+      if (session?.user?.id) {
+        firestoreService.saveFarmerProfile(session.user.id, updated).catch(() => {});
+      }
+      return updated;
+    });
   };
 
   const handleEscalateToExpert = (analysis: CropHealthAnalysis) => {
@@ -435,20 +574,29 @@ export function App() {
 
   const handleSubmitTicket = (newTicket: ExpertTicket) => {
     setExpertTickets((prev) => [newTicket, ...prev]);
+    if (session?.user?.id) {
+      firestoreService.saveExpertTicket(session.user.id, newTicket).catch(() => {});
+    }
   };
 
   const handleResolveTicket = (ticketId: string, prescription: string) => {
-    setExpertTickets((prev) =>
-      prev.map((t) =>
+    setExpertTickets((prev) => {
+      const updated = prev.map((t) =>
         t.id === ticketId
           ? {
               ...t,
-              status: 'RESOLVED',
+              status: 'RESOLVED' as const,
               responseFromOfficer: prescription,
+              resolvedAt: new Date().toISOString(),
             }
           : t
-      )
-    );
+      );
+      const modifiedTicket = updated.find((t) => t.id === ticketId);
+      if (modifiedTicket && session?.user?.id) {
+        firestoreService.saveExpertTicket(session.user.id, modifiedTicket).catch(() => {});
+      }
+      return updated;
+    });
   };
 
   const handleQuickAsk = (prompt: string) => {
@@ -473,7 +621,7 @@ export function App() {
         onSelectLanguage={handleSelectLanguage}
         onOpenLogin={() => {
           setAuthError('');
-          setAuthView('login-phone');
+          setAuthView('login-email');
         }}
         onOpenSignup={() => {
           setAuthError('');
@@ -536,12 +684,12 @@ export function App() {
     );
   }
 
-  // 4. Email & Password Login
+  // 4. Email & Password Login (Firebase Auth)
   if (authView === 'login-email') {
     return (
       <AuthLayout
-        title="Sign In with Email"
-        subtitle="Access your farm advisory telemetry and field logs."
+        title="Sign In to KisanAI"
+        subtitle="Access your farm advisory telemetry, crop health logs, and soil data."
         currentLanguage={farmer.preferredLanguage}
         onSelectLanguage={handleSelectLanguage}
         showBack={true}
@@ -549,6 +697,7 @@ export function App() {
       >
         <EmailLoginForm
           onLogin={handleEmailLogin}
+          onGoogleLogin={handleGoogleAuth}
           onSwitchToPhone={() => {
             setAuthError('');
             setAuthView('login-phone');
@@ -568,7 +717,7 @@ export function App() {
     );
   }
 
-  // 5. Signup Registration Form
+  // 5. Signup Registration Form (Firebase Auth)
   if (authView === 'signup') {
     return (
       <AuthLayout
@@ -581,9 +730,10 @@ export function App() {
       >
         <SignupForm
           onSignup={handleSignup}
+          onGoogleSignup={handleGoogleAuth}
           onSwitchToLogin={() => {
             setAuthError('');
-            setAuthView('login-phone');
+            setAuthView('login-email');
           }}
           isLoading={authLoading}
           error={authError}
@@ -618,13 +768,19 @@ export function App() {
     );
   }
 
-  // 7. Progressive Onboarding Wizard (Post-registration or Setup)
+  // 7. Progressive Onboarding Wizard (Post-registration setup of farm, crops, soil)
   if (authView === 'onboarding-wizard') {
     return (
       <OnboardingWizard
         initialProfile={farmer}
         onComplete={(newProfile) => {
           handleUpdateProfile(newProfile);
+          if (newProfile.farms && newProfile.farms.length > 0) {
+            setSelectedFarmId(newProfile.farms[0].id);
+            if (newProfile.farms[0].plots?.length > 0) {
+              setSelectedPlotId(newProfile.farms[0].plots[0].id);
+            }
+          }
           setAuthView('app');
         }}
         onSkipToDashboard={() => setAuthView('app')}
@@ -808,6 +964,10 @@ export function App() {
             <span className="text-stone-600">Dedicated to Indian Farmers (किसान सेवा)</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
+            <span className="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+              Firebase: kisanai-8b20e
+            </span>
             <span className="px-2.5 py-1 rounded-full bg-stone-100 border border-stone-200 font-medium">
               13 Regional Languages
             </span>

@@ -505,12 +505,32 @@ export interface ExpertTicket {
 
 export type ExpertRequest = ExpertTicket;
 
+export interface GroundingSource {
+  title?: string;
+  uri?: string;
+  snippet?: string;
+  sourceType?: 'search' | 'maps' | 'icar' | 'mandi' | 'scheme';
+}
+
+export interface ChatSession {
+  id: string;
+  userId?: string;
+  title: string;
+  lastMessage?: string;
+  cropContext?: string;
+  plotName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ChatMessage {
   id: string;
+  sessionId?: string;
   sender: 'user' | 'assistant';
   text: string;
   timestamp: string;
   audioAvailable?: boolean;
+  groundingSources?: GroundingSource[];
   structuredDetails?: {
     whatIsHappening?: string;
     whyItHappens?: string;

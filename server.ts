@@ -603,6 +603,10 @@ app.post('/api/auth/logout', (req, res) => {
 // CORE AGRICULTURAL & AI API ROUTES
 // -------------------------------------------------------------
 
+// -------------------------------------------------------------
+// CORE AGRICULTURAL & AI API ROUTES (Gemini 3.7 Flash & Search Grounding)
+// -------------------------------------------------------------
+
 // Health Check API
 app.get('/api/health', (req, res) => {
   res.json({
@@ -613,86 +617,238 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 1. Context-Aware AI Farming Chat Endpoint
-app.post('/api/chat', async (req, res) => {
-  try {
-    const { message, context, language = 'en', history = [] } = req.body;
+// Helper: Build comprehensive agronomic system prompt
+function buildAgronomicSystemInstruction(context: any, language: string = 'en'): string {
+  return `You are KisanAI (किसान मित्र), a distinguished agricultural scientist and personalized precision farming companion for Indian farmers.
+You are powered by Google Gemini and trained on verified packages of practice from the Indian Council of Agricultural Research (ICAR), State Agricultural Universities (PAU, TNAU, IARI, MPKV, PJTSAU, etc.), and Krishi Vigyan Kendras (KVKs).
 
-    if (!message) {
-      return res.status(400).json({ error: 'Message is required' });
-    }
-
-    const ai = getGenAI();
-
-    // Prepare farmer context string
-    const contextPrompt = `
-You are KisanAI / Krishi Mitra, an expert agricultural scientist and personal farming companion for Indian farmers across all states and agro-climatic zones.
-You provide verified, practical, soil-grounded, weather-aware, and crop-specific advice based on ICAR (Indian Council of Agricultural Research), State Agricultural Universities (SAUs), and Krishi Vigyan Kendras (KVKs).
-
-FARMER CONTEXT:
+FARMER AND FIELD CONTEXT:
 - Farmer Name: ${context?.farmer?.name || 'Farmer'}
 - State: ${context?.farmer?.state || 'India'}
 - District: ${context?.farmer?.district || 'General'}
 - Village: ${context?.farmer?.village || 'Local'}
-- Farming Type: ${context?.farmer?.farms?.[0]?.farmingType || 'Irrigated'}
-- Current Plot: ${context?.plot?.name || 'Main Field'}
-- Water Source: ${context?.plot?.waterSource || 'Borewell / Canal'}
-- Soil Profile: Type: ${context?.soil?.soilType || 'Alluvial/Black'}, pH: ${context?.soil?.ph || 7.0}, N: ${context?.soil?.nitrogen || 'Medium'}, P: ${context?.soil?.phosphorus || 'Medium'}, K: ${context?.soil?.potassium || 'Medium'}, Organic Carbon: ${context?.soil?.organicCarbon || 0.5}%
-- Current Active Crop: ${context?.cropSeason?.cropName || 'Paddy / Wheat / Cotton'}
-- Variety: ${context?.cropSeason?.variety || 'Standard'}
-- Current Growth Stage: ${context?.cropSeason?.currentStage || 'Vegetative'}
+- Active Farm: ${context?.farmer?.farms?.[0]?.name || 'Main Farm'} (${context?.farmer?.farms?.[0]?.farmingType || 'Irrigated'})
+- Active Plot: ${context?.plot?.name || 'Main Plot'} (${context?.plot?.acreage || 2} Acres)
+- Water / Irrigation: ${context?.plot?.waterSource || 'Borewell / Drip'}
+- Soil Condition: Type: ${context?.soil?.soilType || 'Alluvial/Black'}, pH: ${context?.soil?.ph || 7.0}, N: ${context?.soil?.nitrogen || 'Medium'}, P: ${context?.soil?.phosphorus || 'Medium'}, K: ${context?.soil?.potassium || 'Medium'}, Organic Carbon: ${context?.soil?.organicCarbon || 0.5}%
+- Current Active Crop: ${context?.cropSeason?.cropName || context?.plot?.currentCropSeason?.cropName || 'Paddy / Wheat / Cotton'}
+- Variety: ${context?.cropSeason?.variety || context?.plot?.currentCropSeason?.variety || 'Certified Variety'}
+- Current Growth Stage: ${context?.cropSeason?.currentStage || context?.plot?.currentCropSeason?.currentStage || 'Vegetative'}
 - Sowing Date: ${context?.cropSeason?.sowingDate || 'Recent'}
-- Weather Today: ${context?.weather?.current?.temperatureC || 30}°C, ${context?.weather?.current?.description || 'Partly Cloudy'}, Rain Probability: ${context?.weather?.current?.precipitationChancePercent || 20}%, Humidity: ${context?.weather?.current?.humidityPercent || 70}%, Weather Advisory: "${context?.weather?.current?.advisoryText || 'Normal'}"
+- Real-time Weather: ${context?.weather?.current?.temperatureC || 30}°C, ${context?.weather?.current?.description || 'Partly Cloudy'}, Rain Probability: ${context?.weather?.current?.precipitationChancePercent || 20}%, Humidity: ${context?.weather?.current?.humidityPercent || 70}%, Advisory: "${context?.weather?.current?.advisoryText || 'Normal farming operations'}"
 
-LANGUAGE REQUIREMENT:
-The farmer's preferred language is code "${language}".
-You MUST respond clearly in that language (${language}) or in natural bilingual script easily readable by the farmer.
+COMMUNICATION & LANGUAGE:
+- Target Language: "${language}" (Hindi, Marathi, Punjabi, Gujarati, Tamil, Telugu, Kannada, Bengali, Odia, Malayalam, Assamese, English).
+- Respond in the farmer's preferred language (${language}) or natural bilingual format that is polite, respectful, and easy to read.
+- Use clear bullet points and bold highlights for critical dosage numbers.
 
-OUTPUT FORMAT REQUIREMENTS:
-Structure your advice in a clean, empathetic, scannable format:
-1. **What is happening / Direct Answer** (Concise explanation)
-2. **Why it happens** (Root cause linking soil, weather, crop stage, or pests)
-3. **What to do now (Action Plan)** (Numbered step-by-step instructions with exact dosage per acre/litre, prioritizing biological/IPM and verified remedies)
-4. **What NOT to do** (Crucial warnings, e.g. avoiding spraying in high wind or over-fertilizing with urea)
-5. **What to monitor over next 48-72 hours**
-6. **When to consult local KVK / Agriculture Officer**
-7. **Verified Basis / Citation** (e.g., ICAR-IIRR / PAU / TNAU / KVK Guidelines)
+RESPONSE STRUCTURE:
+1. **Immediate Diagnosis / Direct Answer** (Direct, empathetic 2-3 sentence answer addressing the query)
+2. **Agronomic Root Cause & Field Analysis** (Explain WHY based on the farmer's soil pH, humidity, crop stage, or weather)
+3. **Step-by-Step Action Plan (With Exact Dosage)** (Practical, actionable guidance with dosage per acre or per 15L knapsack spray pump, prioritizing biological IPM and organic remedies where possible)
+4. **What NOT to Do (Crucial Warnings)** (Common farmer mistakes to avoid, e.g. overusing urea, spraying in rain/wind, mixing incompatible chemicals)
+5. **What to Monitor Over Next 48-72 Hours**
+6. **Local KVK & Expert Escalation** (Reference local KVK in ${context?.farmer?.district || 'district'} or Kisan Call Centre: 1800-180-1551)
 
-Keep dosage specifications realistic for Indian farming conditions (e.g. per acre or per 15-litre knapsack spray pump).
-`;
+SAFETY & ACCURACY RULES:
+- Never hallucinate unverified chemical rates or non-existent subsidies.
+- Keep all unit measurements standard for Indian agriculture (Acre, Bigha, Guntha, Quintal, kg/acre, ml/litre).
+- When asked about live Mandi prices, APMC market rates, or government announcements, provide grounded, factual details.`;
+}
 
+// 1. Context-Aware AI Farming Chat Endpoint (Multi-Turn + Search Grounding + Image Attachment)
+app.post(['/api/chat', '/api/ai/chat'], async (req, res) => {
+  try {
+    const {
+      message,
+      context,
+      language = 'en',
+      history = [],
+      imageBase64,
+      mimeType = 'image/jpeg',
+      useSearch = true,
+    } = req.body;
+
+    if (!message && !imageBase64) {
+      return res.status(400).json({ error: 'Message or image is required' });
+    }
+
+    const ai = getGenAI();
+
+    // If Gemini client not available, return high quality agronomic rule-based response
     if (!ai) {
-      // High-quality fallback rule response if no API key is set
-      const simulatedResponse = `
-### 🌾 KisanAI Agricultural Advisory
+      const crop = context?.cropSeason?.cropName || context?.plot?.currentCropSeason?.cropName || 'your crop';
+      const stage = context?.cropSeason?.currentStage || context?.plot?.currentCropSeason?.currentStage || 'current stage';
+      const district = context?.farmer?.district || 'your district';
+      const state = context?.farmer?.state || 'India';
+      const ph = context?.soil?.ph || 7.0;
+      const temp = context?.weather?.current?.temperatureC || 30;
+      const rain = context?.weather?.current?.precipitationChancePercent || 20;
 
-**1. Direct Answer & Status:**
-Based on your farm in **${context?.farmer?.district || 'your area'}, ${context?.farmer?.state || 'India'}** for **${context?.cropSeason?.cropName || 'your crop'}** at **${context?.cropSeason?.currentStage || 'current stage'}**:
-Your query regarding "*${message}*" has been analyzed with current soil pH (${context?.soil?.ph || 7.0}) and weather conditions (${context?.weather?.current?.temperatureC || 32}°C, ${context?.weather?.current?.precipitationChancePercent || 25}% rain chance).
+      const fallbackText = `### 🌾 KisanAI Agricultural Advisory (Field Advisory Protocol)
 
-**2. Why It Matters:**
-- Crop stage (*${context?.cropSeason?.currentStage || 'active stage'}*) is sensitive to moisture fluctuations and nutrient uptake.
-- Current relative humidity (${context?.weather?.current?.humidityPercent || 75}%) requires vigilance against fungal sporulation and sucking pests.
+**1. Immediate Diagnosis & Status:**
+For **${crop}** (${stage}) on your farm in **${district}, ${state}**:
+Regarding your question: "*${message || 'Field analysis'}*"
+Analyzed under current conditions: Soil pH **${ph}**, Temperature **${temp}°C**, Rain Probability **${rain}%**.
 
-**3. Recommended Immediate Actions:**
-1. **Nutrient / Irrigation Management**: Follow split application schedule. Avoid broadcasting nitrogen fertilizers immediately if rain probability exceeds 50%.
-2. **Organic / IPM Solution**: Spray 5% Neem Seed Kernel Extract (NSKE) or *Pseudomonas fluorescens* @ 5g/litre as prophylactic protection.
-3. **Field Drainage**: Ensure drainage furrows are open to avoid waterlogging in root zone.
+**2. Agronomic Analysis & Root Cause:**
+- At the **${stage}** phase, vegetative and root vigor require balanced N-P-K nutrition with micronutrient support (Zinc & Boron).
+- Current ambient humidity and temperatures require active scouting for sucking pests (aphids, jassids, thrips) and fungal leaf spotting.
+
+**3. Action Plan (Recommended Dosages):**
+1. **Soil & Nutrition**: Apply split fertilizer dose as per soil test recommendations. Avoid broadcasting nitrogen before heavy showers.
+2. **Foliar / Bio-Control**: Spray 5% Neem Seed Kernel Extract (NSKE) or *Pseudomonas fluorescens* @ 5 g/litre as organic preventive spray.
+3. **Moisture Management**: Maintain optimal field moisture without waterlogging. Keep drainage furrows clear.
 
 **4. What NOT to Do:**
-- ❌ Do not apply heavy herbicide or insecticide during strong noon sunshine or before rainfall.
-- ❌ Do not apply excess Urea which increases succulent foliage susceptible to insect pests.
+- ❌ Do not spray during strong midday sun (11 AM - 3 PM) or when wind velocity exceeds 15 km/h.
+- ❌ Do not apply excess Urea which makes tender shoots vulnerable to insect attacks.
 
-**5. What to Monitor:**
-- Check lower leaf undersides for aphid/jassid nymphs in the morning.
+**5. 48-Hour Monitoring:**
+- Inspect leaf undersides and crown area for early discoloration or pest egg masses.
 
 **6. Expert Escalation:**
-- If symptoms persist after 48 hours, contact your local **${context?.farmer?.district || 'District'} Krishi Vigyan Kendra (KVK)** or call Kisan Call Centre at **1800-180-1551**.
+- If symptoms persist or escalate, contact your local **${district} Krishi Vigyan Kendra (KVK)** or call the National Kisan Call Centre at **1800-180-1551** (Toll-Free).
 
-*Source: ICAR Package of Practices & State Department of Agriculture Guidelines.*
-`;
-      return res.json({ response: simulatedResponse.trim() });
+*Verified Citation: ICAR Package of Practices & Directorate of Agriculture, ${state}.*`;
+
+      return res.json({
+        success: true,
+        response: fallbackText,
+        groundingSources: [
+          {
+            title: 'ICAR Package of Practices',
+            uri: 'https://icar.org.in',
+            sourceType: 'icar',
+          },
+          {
+            title: `${district} Krishi Vigyan Kendra Portal`,
+            uri: 'https://kvk.icar.gov.in',
+            sourceType: 'icar',
+          },
+        ],
+      });
     }
+
+    // Build multi-turn contents array conforming to @google/genai SDK
+    const contents: any[] = [];
+
+    // Add prior conversation turns if provided
+    if (Array.isArray(history) && history.length > 0) {
+      for (const item of history.slice(-6)) {
+        if (item.text && item.text.trim()) {
+          contents.push({
+            role: item.sender === 'user' ? 'user' : 'model',
+            parts: [{ text: item.text }],
+          });
+        }
+      }
+    }
+
+    // Prepare current user turn parts
+    const currentParts: any[] = [];
+    if (imageBase64) {
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+      currentParts.push({
+        inlineData: {
+          mimeType: mimeType || 'image/jpeg',
+          data: cleanBase64,
+        },
+      });
+    }
+
+    currentParts.push({
+      text: message || 'Please analyze this crop image and provide agronomic recommendations.',
+    });
+
+    contents.push({
+      role: 'user',
+      parts: currentParts,
+    });
+
+    // Build Gemini generation config
+    const config: any = {
+      systemInstruction: buildAgronomicSystemInstruction(context, language),
+    };
+
+    // Enable Google Search Grounding for live agricultural queries & Mandi prices
+    if (useSearch !== false) {
+      config.tools = [{ googleSearch: {} }];
+    }
+
+    let response: any;
+    try {
+      response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents,
+        config,
+      });
+    } catch (genErr: any) {
+      // If tools cause error (e.g. search rate limit), retry without tools
+      console.warn('Gemini generateContent with search failed, retrying without tools:', genErr?.message);
+      delete config.tools;
+      response = await ai.models.generateContent({
+        model: 'gemini-3.7-flash',
+        contents,
+        config,
+      });
+    }
+
+    const aiText = response.text || 'Advice generated successfully for your farm.';
+
+    // Extract search grounding sources if available
+    const groundingSources: any[] = [];
+    try {
+      const candidate = response.candidates?.[0];
+      const chunks = candidate?.groundingMetadata?.groundingChunks;
+      if (Array.isArray(chunks)) {
+        for (const chunk of chunks) {
+          if (chunk.web?.uri) {
+            groundingSources.push({
+              title: chunk.web.title || 'Government / Agricultural Source',
+              uri: chunk.web.uri,
+              sourceType: 'search',
+            });
+          }
+        }
+      }
+    } catch (e) {
+      // Ignore grounding parsing error
+    }
+
+    return res.json({
+      success: true,
+      response: aiText,
+      groundingSources: groundingSources.length > 0 ? groundingSources : undefined,
+    });
+  } catch (error: any) {
+    console.error('Error in /api/chat:', error);
+    return res.status(500).json({
+      error: 'Failed to process farming advice',
+      details: error.message,
+    });
+  }
+});
+
+// 1B. Audio Speech-to-Text Transcription Endpoint (Gemini 3.7 Flash Multimodal Audio)
+app.post(['/api/transcribe', '/api/ai/transcribe'], async (req, res) => {
+  try {
+    const { audioBase64, mimeType = 'audio/webm', language = 'hi' } = req.body;
+
+    if (!audioBase64) {
+      return res.status(400).json({ error: 'audioBase64 is required' });
+    }
+
+    const ai = getGenAI();
+    if (!ai) {
+      return res.json({
+        success: true,
+        transcript: 'मेरी फसल में कीट लगे हैं, उपाय बताइए।', // Default simulated demo transcript
+      });
+    }
+
+    const cleanBase64 = audioBase64.replace(/^data:audio\/\w+;base64,/, '');
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.7-flash',
@@ -700,22 +856,29 @@ Your query regarding "*${message}*" has been analyzed with current soil pH (${co
         {
           role: 'user',
           parts: [
-            { text: contextPrompt },
-            ...history.map((h: any) => ({
-              text: `${h.sender === 'user' ? 'Farmer' : 'KisanAI'}: ${h.text}`,
-            })),
-            { text: `Farmer asks: "${message}"` },
+            {
+              inlineData: {
+                mimeType: mimeType || 'audio/webm',
+                data: cleanBase64,
+              },
+            },
+            {
+              text: `Transcribe the audio accurately. The speaker is an Indian farmer speaking in ${language} or an Indian regional language (such as Hindi, Marathi, Punjabi, Gujarati, Tamil, Telugu, Kannada, Bengali, Odia, Malayalam, or English). Return ONLY the transcribed text in the original language spoken, without any added explanations or quotes.`,
+            },
           ],
         },
       ],
     });
 
-    const aiText = response.text || 'Advice generated based on your farm parameters.';
-    return res.json({ response: aiText });
+    const transcript = response.text?.trim() || '';
+    return res.json({
+      success: true,
+      transcript,
+    });
   } catch (error: any) {
-    console.error('Error in /api/chat:', error);
+    console.error('Error in /api/transcribe:', error);
     return res.status(500).json({
-      error: 'Failed to process farming advice',
+      error: 'Audio transcription failed',
       details: error.message,
     });
   }

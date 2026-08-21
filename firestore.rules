@@ -1,0 +1,66 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    function isDocOwner() {
+      return isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.id == request.auth.uid
+      );
+    }
+
+    // User accounts
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Farmer agricultural profiles
+    match /farmers/{farmerId} {
+      allow read, write: if isAuthenticated() && (
+        request.auth.uid == farmerId ||
+        (resource != null && resource.data.userId == request.auth.uid) ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid)
+      );
+    }
+
+    // Farm tasks
+    match /tasks/{taskId} {
+      allow read, write: if isDocOwner() || (
+        request.resource != null && request.resource.data.userId == request.auth.uid
+      );
+    }
+
+    // Farm field diary entries
+    match /diaryEntries/{entryId} {
+      allow read, write: if isDocOwner() || (
+        request.resource != null && request.resource.data.userId == request.auth.uid
+      );
+    }
+
+    // Expert escalation tickets (Farmers create and view their own, Officers can read/resolve)
+    match /expertTickets/{ticketId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // Chat sessions and messages for farmer conversations
+    match /chatSessions/{sessionId} {
+      allow read, write: if isDocOwner() || (
+        request.resource != null && request.resource.data.userId == request.auth.uid
+      );
+      match /messages/{messageId} {
+        allow read, write: if isDocOwner() || (
+          request.resource != null && request.resource.data.userId == request.auth.uid
+        );
+      }
+    }
+  }
+}

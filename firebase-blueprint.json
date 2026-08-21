@@ -1,0 +1,180 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user profile and access control metadata",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "name": { "type": "string" },
+        "preferredLanguage": { "type": "string" },
+        "state": { "type": "string" },
+        "district": { "type": "string" },
+        "village": { "type": "string" },
+        "role": { "type": "string", "enum": ["FARMER", "AGRICULTURAL_OFFICER", "ADMIN"] },
+        "farmingExperienceYears": { "type": "number" },
+        "farmingType": { "type": "string" },
+        "isPhoneVerified": { "type": "boolean" },
+        "isEmailVerified": { "type": "boolean" },
+        "isOnboarded": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" }
+      },
+      "required": ["id", "name", "role", "preferredLanguage", "state", "district"]
+    },
+    "FarmerProfile": {
+      "title": "FarmerProfile",
+      "description": "Full Indian farmer agricultural profile including farms, plots, soil, and telemetry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "state": { "type": "string" },
+        "district": { "type": "string" },
+        "village": { "type": "string" },
+        "preferredLanguage": { "type": "string" },
+        "role": { "type": "string" },
+        "farmingExperienceYears": { "type": "number" },
+        "farms": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "state", "district", "preferredLanguage"]
+    },
+    "FarmTask": {
+      "title": "FarmTask",
+      "description": "Field task and advisory action item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "farmId": { "type": "string" },
+        "plotId": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string" },
+        "dueDate": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "whyExplanation": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "dueDate", "completed"]
+    },
+    "FarmDiaryEntry": {
+      "title": "FarmDiaryEntry",
+      "description": "Farmer field activity diary log and expense tracker",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "plotId": { "type": "string" },
+        "date": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "notes": { "type": "string" },
+        "stage": { "type": "string" },
+        "expenseInr": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "date", "title", "category"]
+    },
+    "ExpertTicket": {
+      "title": "ExpertTicket",
+      "description": "ICAR/KVK Agronomist escalation ticket and diagnosis prescription",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "farmerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "state": { "type": "string" },
+        "district": { "type": "string" },
+        "village": { "type": "string" },
+        "cropName": { "type": "string" },
+        "growthStage": { "type": "string" },
+        "soilType": { "type": "string" },
+        "soilPh": { "type": "number" },
+        "subject": { "type": "string" },
+        "description": { "type": "string" },
+        "urgency": { "type": "string" },
+        "status": { "type": "string", "enum": ["OPEN", "IN_REVIEW", "RESOLVED"] },
+        "expertId": { "type": "string" },
+        "expertName": { "type": "string" },
+        "expertDesignation": { "type": "string" },
+        "kvkCenterName": { "type": "string" },
+        "responseFromOfficer": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "resolvedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "farmerName", "cropName", "subject", "description", "status"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "Conversational session with Gemini Agronomic Assistant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "cropContext": { "type": "string" },
+        "plotName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "createdAt"]
+    },
+    "ChatMessageDoc": {
+      "title": "ChatMessageDoc",
+      "description": "Individual message in a farming advisory chat session",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "userId": { "type": "string" },
+        "sender": { "type": "string", "enum": ["user", "assistant"] },
+        "text": { "type": "string" },
+        "sources": { "type": "array" },
+        "hasImage": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "sessionId", "userId", "sender", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User account documents. Only authenticated user can read and write their own doc."
+    },
+    "/farmers/{farmerId}": {
+      "schema": "FarmerProfile",
+      "description": "Farmer profile documents with full crop and plot data."
+    },
+    "/tasks/{taskId}": {
+      "schema": "FarmTask",
+      "description": "Farmer task list."
+    },
+    "/diaryEntries/{entryId}": {
+      "schema": "FarmDiaryEntry",
+      "description": "Farm field activity diary records."
+    },
+    "/expertTickets/{ticketId}": {
+      "schema": "ExpertTicket",
+      "description": "KVK Agronomist support escalation tickets."
+    },
+    "/chatSessions/{sessionId}": {
+      "schema": "ChatSession",
+      "description": "Farming chat sessions."
+    },
+    "/chatSessions/{sessionId}/messages/{messageId}": {
+      "schema": "ChatMessageDoc",
+      "description": "Messages inside chat sessions."
+    }
+  }
+}

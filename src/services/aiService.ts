@@ -6,6 +6,7 @@ import {
   WeatherContext,
   CropRecommendation,
   CropHealthAnalysis,
+  GroundingSource,
 } from '../types/farming';
 import { CROP_LIBRARY } from '../data/cropLibraryData';
 
@@ -17,17 +18,30 @@ export interface ChatContextPayload {
   weather?: WeatherContext;
 }
 
+export interface ChatResult {
+  response: string;
+  groundingSources?: GroundingSource[];
+}
+
 export async function askKisanAI(
   message: string,
   context: ChatContextPayload,
   language: string,
-  history: { sender: 'user' | 'assistant'; text: string }[] = []
-): Promise<string> {
+  history: { sender: 'user' | 'assistant'; text: string }[] = [],
+  imageBase64?: string | null
+): Promise<ChatResult> {
   try {
     const response = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, context, language, history }),
+      body: JSON.stringify({
+        message,
+        context,
+        language,
+        history,
+        imageBase64,
+        useSearch: true,
+      }),
     });
 
     if (!response.ok) {
@@ -35,12 +49,15 @@ export async function askKisanAI(
     }
 
     const data = await response.json();
-    return data.response;
+    return {
+      response: data.response || 'Advice generated.',
+      groundingSources: data.groundingSources,
+    };
   } catch (err: any) {
     console.warn('Backend API fallback triggered for askKisanAI:', err);
     // Offline / deterministic fallback response
-    return `
-### 🌾 KisanAI Agricultural Advisory (Offline Mode)
+    return {
+      response: `### 🌾 KisanAI Agricultural Advisory (Offline Field Protocol)
 
 **1. Status for ${context?.cropSeason?.cropName || 'Your Crop'}:**
 Your question: "*${message}*"
@@ -55,8 +72,39 @@ Analyzing under field conditions in **${context?.farmer?.district || 'your distr
 2. If moisture is adequate, hold off additional irrigation.
 3. For pest protection, prefer organic Neem seed kernel extract (5% NSKE) or bio-control agents.
 
-*For localized tele-consultation, call the National Kisan Call Centre: 1800-180-1551.*
-`;
+*For localized tele-consultation, call the National Kisan Call Centre: 1800-180-1551.*`,
+      groundingSources: [
+        {
+          title: 'ICAR Package of Practices',
+          uri: 'https://icar.org.in',
+          sourceType: 'icar',
+        },
+      ],
+    };
+  }
+}
+
+export async function transcribeAudioWithGemini(
+  audioBase64: string,
+  language: string = 'hi',
+  mimeType: string = 'audio/webm'
+): Promise<string> {
+  try {
+    const response = await fetch('/api/transcribe', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audioBase64, language, mimeType }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Transcription API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.transcript || '';
+  } catch (err) {
+    console.warn('Gemini audio transcription fallback:', err);
+    throw err;
   }
 }
 

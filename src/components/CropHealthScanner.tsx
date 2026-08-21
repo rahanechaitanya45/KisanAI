@@ -28,6 +28,11 @@ import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
 import { EmptyState } from './ui/EmptyState';
 
+import leafSample1 from '../assets/images/regenerated_image_1787314298760.webp';
+import leafSample2 from '../assets/images/regenerated_image_1787314300976.jpg';
+import leafSample3 from '../assets/images/regenerated_image_1787314302616.jpg';
+import leafSample4 from '../assets/images/regenerated_image_1787314304460.webp';
+
 interface CropHealthScannerProps {
   farmer: FarmerProfile;
   selectedPlot: FarmPlot;
@@ -41,28 +46,28 @@ const SAMPLE_LEAF_IMAGES = [
     id: 'sample-paddy-blast',
     crop: 'Paddy (Rice)',
     disease: 'Rice Blast (Magnaporthe oryzae)',
-    url: 'https://images.unsplash.com/photo-1536617621972-602b1e4d6620?auto=format&fit=crop&w=600&q=80',
+    url: leafSample1,
     description: 'Spindle shaped necrotic lesions with ash grey center on leaf blade.',
   },
   {
     id: 'sample-wheat-rust',
     crop: 'Wheat',
     disease: 'Yellow Stripe Rust',
-    url: 'https://images.unsplash.com/photo-1501430654243-c934cec2e1c0?auto=format&fit=crop&w=600&q=80',
+    url: leafSample2,
     description: 'Linear yellow powdery pustules forming stripes on foliage.',
   },
   {
     id: 'sample-cotton-pest',
     crop: 'Cotton',
     disease: 'Pink Bollworm / Sucking Pest Stress',
-    url: 'https://images.unsplash.com/photo-1594488587121-6b8015c71b69?auto=format&fit=crop&w=600&q=80',
+    url: leafSample3,
     description: 'Rosetted flower petals and leaf curling with yellowing.',
   },
   {
     id: 'sample-tomato-blight',
     crop: 'Tomato',
     disease: 'Early / Late Leaf Blight',
-    url: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=600&q=80',
+    url: leafSample4,
     description: 'Target-board concentric brown rings on lower leaves with yellow halo.',
   },
 ];
@@ -74,8 +79,8 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
   onEscalateToExpert,
   onNavigateTab,
 }) => {
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [observedSymptoms, setObservedSymptoms] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(leafSample4);
+  const [observedSymptoms, setObservedSymptoms] = useState(SAMPLE_LEAF_IMAGES[3].description);
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<CropHealthAnalysis | null>(null);
 

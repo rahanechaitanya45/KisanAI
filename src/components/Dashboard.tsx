@@ -39,6 +39,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { MetricCard } from './ui/MetricCard';
+import { WeatherAlertBanner } from './WeatherAlertBanner';
 
 interface DashboardProps {
   farmer: FarmerProfile;
@@ -123,6 +124,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   return (
     <div className="space-y-6 pb-12 animate-in fade-in">
+      {/* Real-Time Agro-Meteorology Weather Alert Banner */}
+      <WeatherAlertBanner
+        farmer={farmer}
+        weather={weather}
+        onQuickAsk={onQuickAsk}
+        onNavigateTab={onNavigateTab}
+      />
+
       {/* 1. Master Welcome & Real-Time Agronomic Hero Card - Light Aesthetic */}
       <div className="rounded-3xl bg-gradient-to-br from-emerald-50/80 via-[#f2faf5] to-white text-stone-900 p-6 sm:p-8 shadow-[0_4px_24px_-4px_rgba(21,128,61,0.06)] border border-emerald-200/80 relative overflow-hidden">
         {/* Subtle background botanical watermark */}

@@ -94,17 +94,17 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="brand-logo"
               onClick={() => setActiveTab('dashboard')}
-              className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-none"
+              className="flex items-center gap-2.5 text-left group cursor-pointer focus:outline-none transition-transform duration-300 ease-out hover:scale-105 active:scale-95 animate-brand-spin-in origin-left"
             >
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 group-hover:bg-emerald-100/70 transition-all shadow-xs">
-                <Sprout className="w-5 h-5 text-emerald-700 group-hover:scale-105 transition-transform" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-700 group-hover:bg-emerald-100 group-hover:border-emerald-300 group-hover:shadow-md transition-all duration-300 shadow-xs">
+                <Sprout className="w-5 h-5 text-emerald-700 group-hover:scale-110 group-hover:rotate-6 transition-all duration-300" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-extrabold text-lg sm:text-xl tracking-tight text-stone-900 flex items-center">
-                    Kisan<span className="text-emerald-700 font-black">AI</span>
+                  <span className="font-extrabold text-lg sm:text-xl tracking-tight text-stone-900 flex items-center group-hover:text-emerald-950 transition-colors">
+                    Kisan<span className="text-emerald-700 font-black group-hover:text-emerald-600 transition-colors">AI</span>
                   </span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1">
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1 group-hover:bg-emerald-100 transition-colors">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     ICAR & KVK Integrated
                   </span>

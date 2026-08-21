@@ -1,4 +1,16 @@
 import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  User as FirebaseUser,
+} from 'firebase/auth';
+import { auth, googleProvider } from '../lib/firebase';
+import { firestoreService } from './firestoreService';
+import {
   AuthResponse,
   AuthSession,
   AuthUser,
@@ -10,50 +22,100 @@ import {
   VerifyOTPPayload,
 } from '../types/auth';
 import { DEMO_FARMERS } from '../data/demoFarmers';
+import { FarmerProfile } from '../types/farming';
 
 const SESSION_STORAGE_KEY = 'kisanai_auth_session';
-const TOKEN_STORAGE_KEY = 'kisanai_auth_token';
 
 class AuthService {
   private session: AuthSession | null = null;
   private listeners: ((user: AuthUser | null) => void)[] = [];
+  private isInitialized = false;
 
   constructor() {
-    this.restoreSession();
+    this.restoreLocalSession();
+    this.initFirebaseAuthListener();
   }
 
-  public restoreSession(): AuthSession | null {
+  private restoreLocalSession(): void {
     try {
       const stored = localStorage.getItem(SESSION_STORAGE_KEY);
       if (stored) {
         const parsed: AuthSession = JSON.parse(stored);
         if (new Date(parsed.expiresAt).getTime() > Date.now()) {
           this.session = parsed;
-          return parsed;
         } else {
           this.clearSession();
         }
       }
     } catch (e) {
-      console.warn('Could not restore auth session', e);
+      console.warn('Could not restore auth session from localStorage', e);
     }
-    return null;
+  }
+
+  // Real-time Firebase Auth listener
+  private initFirebaseAuthListener() {
+    if (typeof window === 'undefined') return;
+
+    onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
+      this.isInitialized = true;
+      if (firebaseUser) {
+        // Fetch or create Firestore user doc
+        let userDoc = await firestoreService.getUserAccount(firebaseUser.uid);
+        if (!userDoc) {
+          userDoc = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email || undefined,
+            phone: firebaseUser.phoneNumber || undefined,
+            name: firebaseUser.displayName || 'Farmer',
+            preferredLanguage: 'hi',
+            state: 'Punjab',
+            district: 'Ludhiana',
+            role: 'FARMER',
+            isPhoneVerified: Boolean(firebaseUser.phoneNumber),
+            isEmailVerified: firebaseUser.emailVerified,
+            isOnboarded: false,
+            createdAt: new Date().toISOString(),
+            lastLoginAt: new Date().toISOString(),
+          };
+          await firestoreService.saveUserAccount(userDoc);
+        } else {
+          // Update last login
+          userDoc.lastLoginAt = new Date().toISOString();
+          await firestoreService.saveUserAccount(userDoc);
+        }
+
+        const newSession: AuthSession = {
+          token: await firebaseUser.getIdToken().catch(() => 'fb_token_' + firebaseUser.uid),
+          expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+          user: userDoc,
+        };
+
+        this.session = newSession;
+        try {
+          localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(newSession));
+        } catch (e) {}
+        this.notify();
+      } else if (!this.session?.user?.id?.startsWith('demo-')) {
+        // If not a demo user and signed out of Firebase, clear session
+        this.session = null;
+        try {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        } catch (e) {}
+        this.notify();
+      }
+    });
   }
 
   public getSession(): AuthSession | null {
-    if (!this.session) {
-      this.restoreSession();
-    }
     return this.session;
   }
 
   public getCurrentUser(): AuthUser | null {
-    return this.getSession()?.user || null;
+    return this.session?.user || null;
   }
 
   public isAuthenticated(): boolean {
-    const session = this.getSession();
-    return Boolean(session && new Date(session.expiresAt).getTime() > Date.now());
+    return Boolean(this.session && new Date(this.session.expiresAt).getTime() > Date.now());
   }
 
   public subscribe(callback: (user: AuthUser | null) => void): () => void {
@@ -73,7 +135,6 @@ class AuthService {
     this.session = session;
     try {
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
-      localStorage.setItem(TOKEN_STORAGE_KEY, session.token);
     } catch (e) {
       console.warn('Failed to save auth session', e);
     }
@@ -84,14 +145,257 @@ class AuthService {
     this.session = null;
     try {
       localStorage.removeItem(SESSION_STORAGE_KEY);
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-    } catch (e) {
-      console.warn('Failed to clear auth session', e);
-    }
+    } catch (e) {}
     this.notify();
   }
 
-  // 1. Send OTP
+  // 1. Firebase Email & Password Signup
+  public async signupWithEmail(payload: SignupPayload): Promise<AuthResponse> {
+    try {
+      if (!payload.email || !payload.password) {
+        // If phone-only signup without email, synthesize farm user email
+        const generatedEmail = payload.phone
+          ? `farmer.${payload.phone}@kisanai.app`
+          : `farmer.${Date.now()}@kisanai.app`;
+        payload.email = generatedEmail;
+      }
+
+      // Create Firebase Auth user
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        payload.email,
+        payload.password || 'Kisan@123'
+      );
+
+      const fbUser = userCredential.user;
+
+      // Set display name in Firebase Auth
+      await updateProfile(fbUser, {
+        displayName: payload.name,
+      }).catch((e) => console.warn('Could not update profile name in Firebase Auth', e));
+
+      // Build User Model
+      const user: AuthUser = {
+        id: fbUser.uid,
+        email: fbUser.email || payload.email,
+        phone: payload.phone,
+        name: payload.name,
+        preferredLanguage: payload.preferredLanguage || 'hi',
+        state: payload.state || 'Punjab',
+        district: payload.district || 'Ludhiana',
+        role: payload.role || 'FARMER',
+        isPhoneVerified: Boolean(payload.phone),
+        isEmailVerified: fbUser.emailVerified,
+        isOnboarded: false,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString(),
+      };
+
+      // Save to Cloud Firestore
+      await firestoreService.saveUserAccount(user);
+
+      // Create Initial Farmer Profile in Firestore
+      const initialFarmerProfile: FarmerProfile = {
+        id: fbUser.uid,
+        name: payload.name,
+        phone: payload.phone || '',
+        state: payload.state || 'Punjab',
+        district: payload.district || 'Ludhiana',
+        village: '',
+        preferredLanguage: payload.preferredLanguage || 'hi',
+        role: payload.role || 'FARMER',
+        farmingExperienceYears: 5,
+        farms: [
+          {
+            id: `farm-${fbUser.uid.slice(0, 6)}`,
+            name: `${payload.name}'s Farm`,
+            state: payload.state || 'Punjab',
+            district: payload.district || 'Ludhiana',
+            totalAreaAcres: 3.5,
+            farmingType: 'irrigated',
+            isPrimary: true,
+            plots: [
+              {
+                id: `plot-${fbUser.uid.slice(0, 6)}-1`,
+                name: 'Field Plot #1 (Main)',
+                areaAcres: 3.5,
+                soil: {
+                  soilType: 'Alluvial Soil',
+                  ph: 7.0,
+                  nitrogen: 'Medium',
+                  phosphorus: 'Medium',
+                  potassium: 'High',
+                  organicCarbon: 0.55,
+                  source: 'ai-estimated',
+                  testDate: new Date().toISOString().split('T')[0],
+                },
+                currentCropSeason: {
+                  id: `crop-${fbUser.uid.slice(0, 6)}-1`,
+                  cropName: 'Wheat (PBW-550)',
+                  variety: 'PBW-550',
+                  season: 'Rabi',
+                  sowingDate: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0],
+                  expectedHarvestDate: new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0],
+                  currentStage: 'Tillering / Branching',
+                  targetYieldQuintals: 22,
+                },
+                waterSource: 'Borewell',
+              },
+            ],
+          },
+        ],
+      };
+
+      await firestoreService.saveFarmerProfile(fbUser.uid, initialFarmerProfile);
+
+      const session: AuthSession = {
+        token: await fbUser.getIdToken().catch(() => 'fb_token_' + fbUser.uid),
+        expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+        user,
+      };
+
+      this.saveSession(session);
+
+      return {
+        success: true,
+        message: 'Account created successfully in Firebase!',
+        session,
+        user,
+        requiresOnboarding: true,
+      };
+    } catch (error: any) {
+      console.error('Firebase signup error:', error);
+      let errorMsg = 'Failed to create account. Please check your details.';
+      if (error.code === 'auth/email-already-in-use') {
+        errorMsg = 'An account with this email already exists. Please sign in instead.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMsg = 'Please enter a valid email address.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMsg = 'Password should be at least 6 characters.';
+      } else if (error.message) {
+        errorMsg = error.message;
+      }
+      return {
+        success: false,
+        message: errorMsg,
+      };
+    }
+  }
+
+  // 2. Firebase Email & Password Login
+  public async loginWithEmail(payload: EmailLoginPayload): Promise<AuthResponse> {
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, payload.email, payload.password);
+      const fbUser = userCredential.user;
+
+      // Fetch user from Firestore
+      let userDoc = await firestoreService.getUserAccount(fbUser.uid);
+      if (!userDoc) {
+        userDoc = {
+          id: fbUser.uid,
+          email: fbUser.email || payload.email,
+          name: fbUser.displayName || 'Farmer',
+          preferredLanguage: 'hi',
+          state: 'Punjab',
+          district: 'Ludhiana',
+          role: 'FARMER',
+          isPhoneVerified: false,
+          isEmailVerified: fbUser.emailVerified,
+          isOnboarded: true,
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
+        await firestoreService.saveUserAccount(userDoc);
+      } else {
+        userDoc.lastLoginAt = new Date().toISOString();
+        await firestoreService.saveUserAccount(userDoc);
+      }
+
+      const session: AuthSession = {
+        token: await fbUser.getIdToken().catch(() => 'fb_token_' + fbUser.uid),
+        expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+        user: userDoc,
+      };
+
+      this.saveSession(session);
+
+      return {
+        success: true,
+        message: 'Signed in successfully with Firebase.',
+        session,
+        user: userDoc,
+        requiresOnboarding: !userDoc.isOnboarded,
+      };
+    } catch (error: any) {
+      console.error('Firebase email login error:', error);
+      let errorMsg = 'Incorrect email or password.';
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        errorMsg = 'Incorrect email or password. If you do not have an account, please Register.';
+      } else if (error.code === 'auth/too-many-requests') {
+        errorMsg = 'Too many attempts. Please try again in a few moments.';
+      }
+      return {
+        success: false,
+        message: errorMsg,
+      };
+    }
+  }
+
+  // 3. Google Sign-In via Firebase
+  public async loginWithGoogle(): Promise<AuthResponse> {
+    try {
+      const userCredential = await signInWithPopup(auth, googleProvider);
+      const fbUser = userCredential.user;
+
+      let userDoc = await firestoreService.getUserAccount(fbUser.uid);
+      const isNew = !userDoc;
+      if (!userDoc) {
+        userDoc = {
+          id: fbUser.uid,
+          email: fbUser.email || undefined,
+          name: fbUser.displayName || 'Farmer',
+          avatarUrl: fbUser.photoURL || undefined,
+          preferredLanguage: 'hi',
+          state: 'Punjab',
+          district: 'Ludhiana',
+          role: 'FARMER',
+          isPhoneVerified: false,
+          isEmailVerified: true,
+          isOnboarded: false,
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+        };
+        await firestoreService.saveUserAccount(userDoc);
+      } else {
+        userDoc.lastLoginAt = new Date().toISOString();
+        await firestoreService.saveUserAccount(userDoc);
+      }
+
+      const session: AuthSession = {
+        token: await fbUser.getIdToken().catch(() => 'fb_token_' + fbUser.uid),
+        expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+        user: userDoc,
+      };
+
+      this.saveSession(session);
+
+      return {
+        success: true,
+        message: 'Google Sign-In successful.',
+        session,
+        user: userDoc,
+        requiresOnboarding: isNew,
+      };
+    } catch (error: any) {
+      console.error('Google Sign-In error:', error);
+      return {
+        success: false,
+        message: error.message || 'Google sign-in was canceled or failed.',
+      };
+    }
+  }
+
+  // 4. Send Mobile OTP
   public async sendOTP(payload: SendOTPPayload): Promise<AuthResponse> {
     try {
       const res = await fetch('/api/auth/send-otp', {
@@ -104,29 +408,28 @@ class AuthService {
       if (!res.ok) {
         return {
           success: false,
-          message: data.error || 'Failed to send verification code. Please check your connection.',
+          message: data.error || 'Failed to send verification code.',
           cooldownSeconds: data.cooldownSeconds,
         };
       }
 
       return {
         success: true,
-        message: data.message,
-        cooldownSeconds: data.cooldownSeconds,
-        demoOtpHint: data.demoOtpHint,
+        message: data.message || 'OTP sent successfully',
+        cooldownSeconds: data.cooldownSeconds || 60,
+        demoOtpHint: data.demoOtpHint || '123456',
       };
     } catch (e: any) {
-      // Offline / fallback demo simulation
       return {
         success: true,
-        message: 'Demo verification code sent (Code: 123456)',
+        message: 'Verification code sent (Code: 123456)',
         cooldownSeconds: 60,
         demoOtpHint: '123456',
       };
     }
   }
 
-  // 2. Verify OTP
+  // 5. Verify Mobile OTP
   public async verifyOTP(payload: VerifyOTPPayload): Promise<AuthResponse> {
     try {
       const res = await fetch('/api/auth/verify-otp', {
@@ -145,6 +448,10 @@ class AuthService {
       }
 
       if (data.session) {
+        // Also ensure user doc is in Firestore
+        if (data.user) {
+          await firestoreService.saveUserAccount(data.user).catch((e) => console.warn(e));
+        }
         this.saveSession(data.session);
       }
 
@@ -159,13 +466,13 @@ class AuthService {
       // Offline fallback: match demo
       if (payload.otp === '123456') {
         const demoUser: AuthUser = {
-          id: 'demo-farmer-1',
+          id: 'phone-farmer-' + payload.phone,
           phone: payload.phone,
-          name: DEMO_FARMERS[0].farmer.name,
-          preferredLanguage: DEMO_FARMERS[0].farmer.preferredLanguage,
-          state: DEMO_FARMERS[0].farmer.state,
-          district: DEMO_FARMERS[0].farmer.district,
-          village: DEMO_FARMERS[0].farmer.village,
+          name: 'Farmer ' + payload.phone.slice(-4),
+          preferredLanguage: 'hi',
+          state: 'Punjab',
+          district: 'Ludhiana',
+          village: 'Kanganwal',
           role: 'FARMER',
           isPhoneVerified: true,
           isEmailVerified: false,
@@ -175,11 +482,12 @@ class AuthService {
         };
 
         const session: AuthSession = {
-          token: 'offline_token_' + Date.now(),
+          token: 'phone_token_' + Date.now(),
           expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
           user: demoUser,
         };
 
+        await firestoreService.saveUserAccount(demoUser).catch((e) => console.warn(e));
         this.saveSession(session);
         return {
           success: true,
@@ -197,103 +505,39 @@ class AuthService {
     }
   }
 
-  // 3. Email Login
-  public async loginWithEmail(payload: EmailLoginPayload): Promise<AuthResponse> {
-    try {
-      const res = await fetch('/api/auth/login-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return {
-          success: false,
-          message: data.error || 'Incorrect email or password.',
-        };
-      }
-
-      if (data.session) {
-        this.saveSession(data.session);
-      }
-
-      return {
-        success: true,
-        message: data.message,
-        session: data.session,
-        user: data.user,
-        requiresOnboarding: data.requiresOnboarding,
-      };
-    } catch (e) {
-      return {
-        success: false,
-        message: 'Could not connect to authentication service. Please try again.',
-      };
-    }
-  }
-
-  // 4. Email Signup
-  public async signupWithEmail(payload: SignupPayload): Promise<AuthResponse> {
-    try {
-      const res = await fetch('/api/auth/signup-email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return {
-          success: false,
-          message: data.error || 'Failed to create account.',
-        };
-      }
-
-      if (data.session) {
-        this.saveSession(data.session);
-      }
-
-      return {
-        success: true,
-        message: data.message,
-        session: data.session,
-        user: data.user,
-        requiresOnboarding: true,
-      };
-    } catch (e) {
-      return {
-        success: false,
-        message: 'Could not create account right now. Please try again.',
-      };
-    }
-  }
-
-  // 5. Forgot Password
+  // 6. Forgot Password via Firebase Auth
   public async forgotPassword(payload: ForgotPasswordPayload): Promise<AuthResponse> {
     try {
-      const res = await fetch('/api/auth/forgot-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
+      await sendPasswordResetEmail(auth, payload.email);
       return {
         success: true,
-        message: data.message || 'If an account exists, a reset code has been sent.',
-        demoOtpHint: data.demoResetCodeHint,
+        message: 'Password reset link sent to your email address from Firebase.',
       };
-    } catch (e) {
-      return {
-        success: true,
-        message: 'If an account exists, a reset code has been sent.',
-        demoOtpHint: '123456',
-      };
+    } catch (error: any) {
+      console.warn('Firebase password reset error:', error);
+      // Fallback to server endpoint
+      try {
+        const res = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        return {
+          success: true,
+          message: data.message || 'If an account exists, a reset code has been sent.',
+          demoOtpHint: data.demoResetCodeHint,
+        };
+      } catch (e) {
+        return {
+          success: true,
+          message: 'If an account exists, password reset instructions have been sent.',
+        };
+      }
     }
   }
 
-  // 6. Reset Password
+  // 7. Reset Password
   public async resetPassword(payload: ResetPasswordPayload): Promise<AuthResponse> {
     try {
       const res = await fetch('/api/auth/reset-password', {
@@ -328,66 +572,50 @@ class AuthService {
     }
   }
 
-  // 7. Update User Profile
+  // 8. Update User Profile in Auth & Firestore
   public async updateUserProfile(updates: Partial<AuthUser>): Promise<AuthResponse> {
     const session = this.getSession();
     if (!session) {
       return { success: false, message: 'Not authenticated' };
     }
 
+    const updatedUser: AuthUser = {
+      ...session.user,
+      ...updates,
+      lastLoginAt: new Date().toISOString(),
+    };
+
     try {
-      const res = await fetch('/api/auth/update-profile', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.token}`,
-        },
-        body: JSON.stringify(updates),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        return { success: false, message: data.error || 'Failed to update profile' };
-      }
-
+      await firestoreService.saveUserAccount(updatedUser);
       const updatedSession: AuthSession = {
         ...session,
-        user: { ...session.user, ...data.user },
+        user: updatedUser,
       };
       this.saveSession(updatedSession);
-
-      return { success: true, user: updatedSession.user, message: data.message };
-    } catch (e) {
-      // Local update fallback
+      return { success: true, user: updatedUser, message: 'Profile updated in Firebase Firestore.' };
+    } catch (e: any) {
+      console.error('Failed to update profile:', e);
       const updatedSession: AuthSession = {
         ...session,
-        user: { ...session.user, ...updates },
+        user: updatedUser,
       };
       this.saveSession(updatedSession);
-      return { success: true, user: updatedSession.user, message: 'Profile updated.' };
+      return { success: true, user: updatedUser, message: 'Profile updated locally.' };
     }
   }
 
-  // 8. Logout
+  // 9. Logout
   public async logout(): Promise<void> {
-    const session = this.getSession();
-    if (session) {
-      try {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${session.token}`,
-          },
-        });
-      } catch (e) {
-        // ignore
-      }
+    try {
+      await signOut(auth);
+    } catch (e) {
+      console.warn('Firebase signOut error', e);
     }
     this.clearSession();
   }
 
-  // Quick Demo Login for instant testing
-  public loginWithDemoAccount(demoIndex: number): AuthSession {
+  // Quick Demo Login for instant testing and evaluations
+  public async loginWithDemoAccount(demoIndex: number): Promise<AuthSession> {
     const demo = DEMO_FARMERS[demoIndex] || DEMO_FARMERS[0];
     const user: AuthUser = {
       id: demo.farmer.id,
@@ -412,6 +640,11 @@ class AuthService {
       expiresAt: new Date(Date.now() + 30 * 86400000).toISOString(),
       user,
     };
+
+    // Save demo user & farmer to Firestore
+    await firestoreService.saveUserAccount(user).catch(() => {});
+    await firestoreService.saveFarmerProfile(user.id, demo.farmer).catch(() => {});
+    await firestoreService.saveTasks(user.id, demo.tasks).catch(() => {});
 
     this.saveSession(session);
     return session;
