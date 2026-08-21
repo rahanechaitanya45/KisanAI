@@ -1,7 +1,8 @@
 import React from 'react';
 import { Sprout, ShieldCheck, Globe, Sparkles, CheckCircle2, ArrowLeft, PhoneCall } from 'lucide-react';
 import { LanguageCode } from '../../types/farming';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../../data/i18n';
+import { SUPPORTED_LANGUAGES } from '../../data/i18n';
+import { useI18n } from '../../context/I18nContext';
 
 interface AuthLayoutProps {
   children: React.ReactNode;
@@ -22,8 +23,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
   onBackToLanding,
   showBack = false,
 }) => {
-  const currentLangObj =
-    SUPPORTED_LANGUAGES.find((l) => l.code === currentLanguage) || SUPPORTED_LANGUAGES[0];
+  const { t } = useI18n();
 
   return (
     <div className="min-h-screen bg-[#f8faf6] flex flex-col justify-between selection:bg-emerald-100 selection:text-emerald-950">
@@ -39,7 +39,7 @@ export const AuthLayout: React.FC<AuthLayoutProps> = ({
                 title="Back to home"
               >
                 <ArrowLeft className="w-4 h-4" />
-                <span className="hidden sm:inline">Home</span>
+                <span className="hidden sm:inline">{t('common.back')}</span>
               </button>
             )}
             <div className="flex items-center gap-2">

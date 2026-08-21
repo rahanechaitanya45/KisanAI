@@ -9,6 +9,11 @@ import {
   GroundingSource,
 } from '../types/farming';
 import { CROP_LIBRARY } from '../data/cropLibraryData';
+import {
+  sanitizeChatResponse,
+  generateDirectFallbackResponse,
+  classifyFarmerIntent,
+} from './chatIntelligence';
 
 export interface ChatContextPayload {
   farmer: FarmerProfile;
@@ -49,37 +54,18 @@ export async function askKisanAI(
     }
 
     const data = await response.json();
+    const cleanResponse = sanitizeChatResponse(data.response || 'Advice generated.', context?.farmer?.name);
     return {
-      response: data.response || 'Advice generated.',
+      response: cleanResponse || data.response,
       groundingSources: data.groundingSources,
     };
   } catch (err: any) {
     console.warn('Backend API fallback triggered for askKisanAI:', err);
-    // Offline / deterministic fallback response
+    const intent = classifyFarmerIntent(message, history);
+    const fallback = generateDirectFallbackResponse(message, context, language, intent);
     return {
-      response: `### 🌾 KisanAI Agricultural Advisory (Offline Field Protocol)
-
-**1. Status for ${context?.cropSeason?.cropName || 'Your Crop'}:**
-Your question: "*${message}*"
-Analyzing under field conditions in **${context?.farmer?.district || 'your district'}, ${context?.farmer?.state || 'India'}**.
-
-**2. Key Agronomic Insights:**
-- Soil: ${context?.soil?.soilType || 'Alluvial/Black Soil'} (pH ${context?.soil?.ph || 7.0}) with Organic Carbon ${context?.soil?.organicCarbon || 0.5}%.
-- Weather Status: ${context?.weather?.current?.temperatureC || 32}°C, ${context?.weather?.current?.precipitationChancePercent || 30}% chance of rain.
-
-**3. Action Plan:**
-1. Maintain regular crop scouting at sunrise.
-2. If moisture is adequate, hold off additional irrigation.
-3. For pest protection, prefer organic Neem seed kernel extract (5% NSKE) or bio-control agents.
-
-*For localized tele-consultation, call the National Kisan Call Centre: 1800-180-1551.*`,
-      groundingSources: [
-        {
-          title: 'ICAR Package of Practices',
-          uri: 'https://icar.org.in',
-          sourceType: 'icar',
-        },
-      ],
+      response: fallback.response,
+      groundingSources: fallback.groundingSources,
     };
   }
 }
@@ -112,7 +98,8 @@ export async function diagnoseCropHealth(
   imageBase64: string,
   cropName: string,
   symptoms: string,
-  context: ChatContextPayload
+  context: ChatContextPayload,
+  language: string = 'en'
 ): Promise<CropHealthAnalysis> {
   try {
     const response = await fetch('/api/crop-health', {
@@ -123,6 +110,7 @@ export async function diagnoseCropHealth(
         cropName,
         symptoms,
         context,
+        language,
       }),
     });
 

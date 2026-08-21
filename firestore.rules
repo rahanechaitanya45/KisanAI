@@ -32,15 +32,19 @@ service cloud.firestore {
 
     // Farm tasks
     match /tasks/{taskId} {
-      allow read, write: if isDocOwner() || (
-        request.resource != null && request.resource.data.userId == request.auth.uid
+      allow read, write: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid)
       );
     }
 
     // Farm field diary entries
     match /diaryEntries/{entryId} {
-      allow read, write: if isDocOwner() || (
-        request.resource != null && request.resource.data.userId == request.auth.uid
+      allow read, write: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid)
       );
     }
 
@@ -53,14 +57,15 @@ service cloud.firestore {
 
     // Chat sessions and messages for farmer conversations
     match /chatSessions/{sessionId} {
-      allow read, write: if isDocOwner() || (
-        request.resource != null && request.resource.data.userId == request.auth.uid
+      allow read, write: if isAuthenticated() && (
+        resource == null ||
+        resource.data.userId == request.auth.uid ||
+        (request.resource != null && request.resource.data.userId == request.auth.uid)
       );
       match /messages/{messageId} {
-        allow read, write: if isDocOwner() || (
-          request.resource != null && request.resource.data.userId == request.auth.uid
-        );
+        allow read, write: if isAuthenticated();
       }
     }
   }
 }
+

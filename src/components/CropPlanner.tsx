@@ -1,31 +1,23 @@
 import React, { useState } from 'react';
 import {
   Sprout,
-  TrendingUp,
-  Droplets,
-  Coins,
   CheckCircle2,
   AlertTriangle,
   ChevronRight,
-  Filter,
-  ShieldCheck,
-  Layers,
   Sparkles,
-  Calendar,
   X,
 } from 'lucide-react';
 import {
   FarmerProfile,
   FarmPlot,
-  CropCategory,
   CropRecommendation,
 } from '../types/farming';
-import { getTranslation } from '../data/i18n';
 import { calculateCropRecommendations } from '../services/aiService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
+import { useI18n } from '../context/I18nContext';
 
 interface CropPlannerProps {
   farmer: FarmerProfile;
@@ -38,14 +30,12 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
   farmer,
   selectedPlot,
   onNavigateTab,
-  onSelectCropForSeason,
 }) => {
+  const { t, lookupAgro } = useI18n();
   const [selectedSeason, setSelectedSeason] = useState<'Kharif' | 'Rabi' | 'Zaid'>('Kharif');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [budgetPerAcre, setBudgetPerAcre] = useState<number>(35000);
   const [activeCropDetail, setActiveCropDetail] = useState<CropRecommendation | null>(null);
-
-  const lang = farmer.preferredLanguage;
 
   const recommendations = calculateCropRecommendations(
     farmer.state,
@@ -65,8 +55,8 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header */}
       <SectionHeader
-        title="Crop Selection & Economic Planner"
-        subtitle={`Personalized for ${farmer.district}, ${farmer.state} • Matching soil chemistry (${selectedPlot?.soil?.soilType}, pH ${selectedPlot?.soil?.ph}) and irrigation access (${selectedPlot?.waterSource})`}
+        title={t('cropPlanner.title')}
+        subtitle={`${farmer.district}, ${farmer.state} • ${lookupAgro('soilTypes', selectedPlot?.soil?.soilType || 'Soil')} (pH ${selectedPlot?.soil?.ph || 7}) • ${lookupAgro('waterSources', selectedPlot?.waterSource || 'Borewell')}`}
         badge={
           <Badge variant="primary" size="sm">
             <Sprout className="w-3.5 h-3.5 mr-1" />
@@ -75,7 +65,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
         }
         action={
           <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950">
-            <span className="font-bold">Active Plot:</span> {selectedPlot?.name} ({selectedPlot?.soil?.soilType})
+            <span className="font-bold">{t('cropPlanner.activeCrop')}:</span> {selectedPlot?.name} ({lookupAgro('soilTypes', selectedPlot?.soil?.soilType || '')})
           </div>
         }
       />
@@ -97,10 +87,10 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                   }`}
                 >
                   {season === 'Kharif'
-                    ? '🌧 Kharif (Monsoon)'
+                    ? `🌧 ${lookupAgro('seasons', 'Kharif')}`
                     : season === 'Rabi'
-                    ? '❄️ Rabi (Winter)'
-                    : '☀️ Zaid (Summer)'}
+                    ? `❄️ ${lookupAgro('seasons', 'Rabi')}`
+                    : `☀️ ${lookupAgro('seasons', 'Zaid')}`}
                 </button>
               ))}
             </div>
@@ -109,23 +99,23 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="agri-input text-xs py-1.5 font-semibold"
+              className="px-3 py-1.5 rounded-xl border border-stone-300 text-xs font-semibold bg-stone-50/50"
             >
-              <option value="All">All Categories</option>
-              <option value="Cereals">Cereals (Paddy, Wheat)</option>
-              <option value="Commercial">Commercial (Cotton, Sugarcane)</option>
-              <option value="Oilseeds">Oilseeds (Soybean, Mustard)</option>
-              <option value="Spices">Spices (Pepper, Turmeric)</option>
-              <option value="Fruits">Fruits (Banana, Mango)</option>
-              <option value="Vegetables">Vegetables (Tomato, Onion)</option>
+              <option value="All">{t('common.all')}</option>
+              <option value="Cereals">Cereals</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Oilseeds">Oilseeds</option>
+              <option value="Spices">Spices</option>
+              <option value="Fruits">Fruits</option>
+              <option value="Vegetables">Vegetables</option>
             </select>
           </div>
 
           {/* Budget Slider */}
           <div className="flex items-center gap-2.5 text-xs font-semibold text-stone-700">
-            <span>Max Budget:</span>
+            <span>{t('cropPlanner.estimatedCost')}:</span>
             <span className="font-extrabold text-emerald-800">
-              ₹{budgetPerAcre.toLocaleString()}/acre
+              ₹{budgetPerAcre.toLocaleString()}/{t('common.acre')}
             </span>
             <input
               type="range"
@@ -159,7 +149,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                 />
                 <div className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-extrabold shadow-sm bg-emerald-800 text-white flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>{rec.suitabilityScorePercent}% Fit</span>
+                  <span>{rec.suitabilityScorePercent}% {t('cropPlanner.suitability')}</span>
                 </div>
                 <div className="absolute bottom-3 left-3 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/90 text-stone-800 border border-stone-200 backdrop-blur-xs">
                   {rec.crop.category} • {rec.crop.durationDays} Days
@@ -170,7 +160,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
               <div className="p-5 space-y-3.5">
                 <div>
                   <h3 className="font-extrabold text-base text-stone-900 leading-tight">
-                    {rec.crop.name}
+                    {lookupAgro('crops', rec.crop.name)}
                   </h3>
                   <p className="text-xs text-stone-500 italic">{rec.crop.scientificName}</p>
                 </div>
@@ -178,19 +168,19 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                 {/* Financial estimates */}
                 <div className="grid grid-cols-3 gap-2 p-3 rounded-2xl bg-stone-50 border border-stone-200 text-center">
                   <div>
-                    <p className="text-[10px] text-stone-500 font-medium">Est. Cost</p>
+                    <p className="text-[10px] text-stone-500 font-medium">{t('cropPlanner.estimatedCost')}</p>
                     <p className="text-xs font-extrabold text-stone-900">
                       ₹{(rec.estimatedInvestmentPerAcre / 1000).toFixed(0)}k/ac
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-stone-500 font-medium">Avg Yield</p>
+                    <p className="text-[10px] text-stone-500 font-medium">{t('cropPlanner.estimatedYield')}</p>
                     <p className="text-xs font-extrabold text-stone-900">
                       {rec.estimatedYieldQuintals} Qtl
                     </p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-stone-500 font-medium">Est. Profit</p>
+                    <p className="text-[10px] text-stone-500 font-medium">{t('cropPlanner.estimatedProfit')}</p>
                     <p className="text-xs font-extrabold text-emerald-700">
                       +₹{(rec.estimatedNetProfitPerAcre / 1000).toFixed(0)}k/ac
                     </p>
@@ -200,7 +190,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                 {/* Agronomic Reasons */}
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                    Why Recommended:
+                    {t('cropPlanner.whyRecommended')}:
                   </p>
                   <ul className="text-xs text-stone-700 space-y-0.5">
                     {rec.reasons.slice(0, 2).map((r, i) => (
@@ -230,7 +220,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                 fullWidth
                 onClick={() => setActiveCropDetail(rec)}
               >
-                Agronomy Details
+                {t('cropPlanner.suitability')}
               </Button>
               <Button
                 variant="secondary"
@@ -256,10 +246,10 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
             <div className="flex items-start justify-between border-b border-stone-200 pb-3">
               <div>
                 <Badge variant="primary" size="sm">
-                  {activeCropDetail.suitabilityScorePercent}% Agronomic Match
+                  {activeCropDetail.suitabilityScorePercent}% {t('cropPlanner.suitability')}
                 </Badge>
                 <h2 className="text-xl font-extrabold text-stone-900 mt-1.5">
-                  {activeCropDetail.crop.name}
+                  {lookupAgro('crops', activeCropDetail.crop.name)}
                 </h2>
                 <p className="text-xs text-stone-500">{activeCropDetail.crop.scientificName}</p>
               </div>
@@ -274,25 +264,25 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
             {/* Summary */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Duration</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.duration')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {activeCropDetail.crop.durationDays} Days
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Water Need</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.waterNeed')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {activeCropDetail.crop.waterRequirement}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Optimal pH</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.soilPh')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {activeCropDetail.crop.optimalPhRange.join(' - ')}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Seed Rate/Acre</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.spacing')}</p>
                 <p className="font-extrabold text-stone-900 text-[11px] truncate mt-0.5">
                   {activeCropDetail.crop.seedRatePerAcre}
                 </p>
@@ -301,7 +291,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
 
             {/* Spacing */}
             <div className="space-y-1.5 text-xs text-stone-700">
-              <p className="font-bold text-stone-900">Recommended Spacing:</p>
+              <p className="font-bold text-stone-900">{t('cropLibrary.spacing')}:</p>
               <p className="p-3 bg-stone-50 border border-stone-200 rounded-2xl">
                 {activeCropDetail.crop.spacing}
               </p>
@@ -309,7 +299,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
 
             {/* Fertilizer Guide */}
             <div className="space-y-1.5 text-xs text-stone-700">
-              <p className="font-bold text-stone-900">Fertilizer Application Schedule:</p>
+              <p className="font-bold text-stone-900">{t('cropLibrary.fertilizer')}:</p>
               <div className="space-y-1.5 p-3.5 bg-emerald-50/50 border border-emerald-200 rounded-2xl">
                 <p>
                   <strong className="text-emerald-950">Basal:</strong>{' '}
@@ -332,7 +322,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                 size="sm"
                 onClick={() => setActiveCropDetail(null)}
               >
-                Close
+                {t('common.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -342,7 +332,7 @@ export const CropPlanner: React.FC<CropPlannerProps> = ({
                   onNavigateTab('calendar');
                 }}
               >
-                Add to My Crop Calendar
+                {t('calendar.title')}
               </Button>
             </div>
           </Card>

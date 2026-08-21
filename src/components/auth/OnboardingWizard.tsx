@@ -4,21 +4,14 @@ import {
   CheckCircle2,
   ArrowRight,
   ArrowLeft,
-  MapPin,
-  Globe,
-  Layers,
-  Droplets,
-  Calendar,
   Sparkles,
-  User,
-  SkipForward,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
 import { FarmerProfile, Farm, FarmPlot, LanguageCode, SoilType, WaterSource } from '../../types/farming';
 import { INDIA_AGRO_STATES } from '../../data/indiaAgroData';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../../data/i18n';
+import { SUPPORTED_LANGUAGES } from '../../data/i18n';
+import { useI18n } from '../../context/I18nContext';
 import confetti from 'canvas-confetti';
 
 interface OnboardingWizardProps {
@@ -46,12 +39,13 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   onComplete,
   onSkipToDashboard,
 }) => {
-  const [currentStep, setCurrentStep] = useState<number>(2); // Step 1 (Account) is already verified!
+  const { t, language, setLanguage, lookupAgro } = useI18n();
+  const [currentStep, setCurrentStep] = useState<number>(2);
 
   // Profile Form State
   const [name, setName] = useState(initialProfile.name || '');
   const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(
-    initialProfile.preferredLanguage || 'hi'
+    initialProfile.preferredLanguage || language
   );
   const [state, setState] = useState(initialProfile.state || 'Punjab');
   const [district, setDistrict] = useState(initialProfile.district || 'Ludhiana');
@@ -77,7 +71,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
   // Crop Form State
   const [cropName, setCropName] = useState(
-    initialProfile.farms[0]?.plots[0]?.currentCropSeason?.cropName || 'Wheat (गेहूं)'
+    initialProfile.farms[0]?.plots[0]?.currentCropSeason?.cropName || 'Wheat'
   );
   const [variety, setVariety] = useState(
     initialProfile.farms[0]?.plots[0]?.currentCropSeason?.variety || 'HD-2967'
@@ -98,6 +92,11 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
     if (foundState && foundState.districts.length > 0) {
       setDistrict(foundState.districts[0].name);
     }
+  };
+
+  const handleLangChange = (newLang: LanguageCode) => {
+    setPreferredLanguage(newLang);
+    setLanguage(newLang);
   };
 
   const handleFinish = () => {
@@ -163,10 +162,10 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
   };
 
   const steps = [
-    { num: 1, label: 'Account Verified' },
-    { num: 2, label: 'Personal Profile' },
-    { num: 3, label: 'Farm Setup' },
-    { num: 4, label: 'Current Crop' },
+    { num: 1, label: t('auth.verifiedSuccess') },
+    { num: 2, label: t('profile.title') },
+    { num: 3, label: t('profile.farmDetails') },
+    { num: 4, label: t('cropPlanner.activeCrop') },
   ];
 
   return (
@@ -176,20 +175,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-200 text-xs font-bold shadow-xs">
             <Sprout className="w-4 h-4 text-emerald-700" />
-            <span>Welcome to KisanAI Personal Farm Companion</span>
+            <span>{t('app.name')} • {t('app.tagline')}</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-stone-900 tracking-tight">
-            Let's Personalize Your Farm Intelligence
+            {t('onboarding.welcomeTitle')}
           </h1>
           <p className="text-xs sm:text-sm text-stone-600 max-w-md mx-auto">
-            Tell us about your soil and crops so your AI agronomist can provide pin-point advisory.
+            {t('onboarding.welcomeSubtitle')}
           </p>
         </div>
 
         {/* Step Progress Indicator */}
         <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-xs">
           <div className="flex items-center justify-between relative">
-            {/* Background Line */}
             <div className="absolute top-1/2 left-4 right-4 h-0.5 bg-stone-200 -translate-y-1/2 z-0"></div>
 
             {steps.map((step) => {
@@ -228,34 +226,34 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           {currentStep === 2 && (
             <div className="space-y-5 animate-in fade-in">
               <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-lg font-bold text-stone-900">Step 2: Basic Farmer Profile</h3>
+                <h3 className="text-lg font-bold text-stone-900">Step 2: {t('profile.title')}</h3>
                 <p className="text-xs text-stone-500">
-                  Your identity and preferred communication language
+                  {t('profile.subtitle')}
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Your Name (आपका नाम) *
+                    {t('auth.fullName')} *
                   </label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Ramesh Kumar Patel"
+                    placeholder="Ramesh Kumar Patel"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-medium focus:ring-2 focus:ring-emerald-700 focus:outline-none bg-stone-50/50"
                   />
                 </div>
 
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Preferred Language (पसंदीदा भाषा) *
+                    {t('profile.preferredLanguage')} *
                   </label>
                   <select
                     value={preferredLanguage}
-                    onChange={(e) => setPreferredLanguage(e.target.value as LanguageCode)}
+                    onChange={(e) => handleLangChange(e.target.value as LanguageCode)}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                   >
                     {SUPPORTED_LANGUAGES.map((l) => (
@@ -269,7 +267,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      State (राज्य) *
+                      {t('onboarding.state')} *
                     </label>
                     <select
                       value={state}
@@ -286,7 +284,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      District (ज़िला) *
+                      {t('onboarding.district')} *
                     </label>
                     <select
                       value={district}
@@ -295,7 +293,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     >
                       {currentState.districts.map((d) => (
                         <option key={d.name} value={d.name}>
-                          {d.name}
+                          {d.nameMr ? `${d.name} (${d.nameMr})` : d.name}
                         </option>
                       ))}
                     </select>
@@ -305,30 +303,30 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Village / Taluka (गांव / तहसील)
+                      {t('onboarding.village')}
                     </label>
                     <input
                       type="text"
                       value={village}
                       onChange={(e) => setVillage(e.target.value)}
-                      placeholder="e.g. Dindori / Kanganwal"
+                      placeholder="Dindori / Kanganwal"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-medium focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Farming Experience (अनुभव)
+                      {t('onboarding.experience')}
                     </label>
                     <select
                       value={experience}
                       onChange={(e) => setExperience(Number(e.target.value))}
                       className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     >
-                      <option value={2}>1 - 3 Years (Beginner)</option>
-                      <option value={6}>4 - 8 Years (Experienced)</option>
-                      <option value={15}>10 - 20 Years (Veteran)</option>
-                      <option value={25}>20+ Years (Master Cultivator)</option>
+                      <option value={2}>1 - 3 Years</option>
+                      <option value={6}>4 - 8 Years</option>
+                      <option value={15}>10 - 20 Years</option>
+                      <option value={25}>20+ Years</option>
                     </select>
                   </div>
                 </div>
@@ -340,7 +338,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   onClick={onSkipToDashboard}
                   className="text-xs text-stone-500 hover:text-stone-800 font-semibold cursor-pointer"
                 >
-                  Skip for Now
+                  {t('onboarding.skipStep')}
                 </button>
                 <Button
                   id="onboard-step2-next"
@@ -351,7 +349,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   disabled={!name.trim()}
                   icon={<ArrowRight className="w-4 h-4" />}
                 >
-                  Next: Farm Details
+                  {t('common.next')}
                 </Button>
               </div>
             </div>
@@ -361,22 +359,22 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           {currentStep === 3 && (
             <div className="space-y-5 animate-in fade-in">
               <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-lg font-bold text-stone-900">Step 3: Farm & Landholding</h3>
+                <h3 className="text-lg font-bold text-stone-900">Step 3: {t('profile.farmDetails')}</h3>
                 <p className="text-xs text-stone-500">
-                  Land area, soil classification, and irrigation source
+                  {t('onboarding.farmDetails')}
                 </p>
               </div>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-700 mb-1">
-                    Farm Name (खेत का नाम)
+                    {t('profile.farmName')}
                   </label>
                   <input
                     type="text"
                     value={farmName}
                     onChange={(e) => setFarmName(e.target.value)}
-                    placeholder="e.g. North Plot / Ganga Farm"
+                    placeholder="North Plot / Ganga Farm"
                     className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-medium focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                   />
                 </div>
@@ -384,7 +382,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Total Farm Area (कुल एकड़) *
+                      {t('onboarding.farmArea')} ({t('common.acre')}) *
                     </label>
                     <input
                       type="number"
@@ -398,17 +396,17 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Farming Method (खेती का प्रकार)
+                      {t('onboarding.farmingMethod')}
                     </label>
                     <select
                       value={farmingType}
                       onChange={(e) => setFarmingType(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     >
-                      <option value="irrigated">Irrigated (सिंचित)</option>
-                      <option value="rainfed">Rainfed / Dryland (वर्षा आधारित)</option>
-                      <option value="organic">Organic Certified (जैविक)</option>
-                      <option value="natural">Natural / Zero Budget (प्राकृतिक खेती)</option>
+                      <option value="irrigated">Irrigated</option>
+                      <option value="rainfed">Rainfed / Dryland</option>
+                      <option value="organic">Organic Certified</option>
+                      <option value="natural">Natural / Zero Budget</option>
                     </select>
                   </div>
                 </div>
@@ -416,7 +414,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Primary Soil Type (मिट्टी का प्रकार) *
+                      {t('onboarding.soilType')} *
                     </label>
                     <select
                       value={soilType}
@@ -425,7 +423,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     >
                       {AVAILABLE_SOIL_TYPES.map((s) => (
                         <option key={s} value={s}>
-                          {s}
+                          {lookupAgro('soilTypes', s)}
                         </option>
                       ))}
                     </select>
@@ -433,19 +431,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Irrigation Water Source (पानी का स्रोत) *
+                      {t('onboarding.waterSource')} *
                     </label>
                     <select
                       value={waterSource}
                       onChange={(e) => setWaterSource(e.target.value as WaterSource)}
                       className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     >
-                      <option value="Borewell">Borewell (ट्यूबवेल)</option>
-                      <option value="Canal">Canal Irrigation (नहर)</option>
-                      <option value="Drip Irrigation">Drip Micro-Irrigation (ड्रिप)</option>
-                      <option value="Open Well">Open Well (कुआं)</option>
-                      <option value="Rainfed">Rainfed / Rain Only (वर्षा)</option>
-                      <option value="Pond">Farm Pond (तालाब)</option>
+                      <option value="Borewell">Borewell</option>
+                      <option value="Canal">Canal</option>
+                      <option value="Drip Irrigation">Drip Micro-Irrigation</option>
+                      <option value="Open Well">Open Well</option>
+                      <option value="Rainfed">Rainfed</option>
+                      <option value="Pond">Farm Pond</option>
                     </select>
                   </div>
                 </div>
@@ -459,7 +457,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   onClick={() => setCurrentStep(2)}
                   icon={<ArrowLeft className="w-4 h-4" />}
                 >
-                  Back
+                  {t('common.back')}
                 </Button>
                 <div className="flex items-center gap-2">
                   <button
@@ -467,7 +465,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     onClick={onSkipToDashboard}
                     className="text-xs text-stone-500 hover:text-stone-800 font-semibold cursor-pointer px-2"
                   >
-                    Add Later
+                    {t('onboarding.skipStep')}
                   </button>
                   <Button
                     id="onboard-step3-next"
@@ -477,7 +475,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                     onClick={() => setCurrentStep(4)}
                     icon={<ArrowRight className="w-4 h-4" />}
                   >
-                    Next: Active Crop
+                    {t('common.next')}
                   </Button>
                 </div>
               </div>
@@ -488,9 +486,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
           {currentStep === 4 && (
             <div className="space-y-5 animate-in fade-in">
               <div className="border-b border-stone-100 pb-3">
-                <h3 className="text-lg font-bold text-stone-900">Step 4: Active Crop Sown</h3>
+                <h3 className="text-lg font-bold text-stone-900">Step 4: {t('cropPlanner.activeCrop')}</h3>
                 <p className="text-xs text-stone-500">
-                  Set up your current standing crop to activate live phenological tracking
+                  {t('onboarding.cropDetails')}
                 </p>
               </div>
 
@@ -498,26 +496,26 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Current Crop (फसल का नाम) *
+                      {t('cropPlanner.cropName')} *
                     </label>
                     <input
                       type="text"
                       value={cropName}
                       onChange={(e) => setCropName(e.target.value)}
-                      placeholder="e.g. Wheat, Paddy, Cotton, Soybean, Onion"
+                      placeholder="Wheat, Paddy, Cotton, Soybean, Onion"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-semibold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     />
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Seed Variety (किस्म)
+                      {t('cropPlanner.variety')}
                     </label>
                     <input
                       type="text"
                       value={variety}
                       onChange={(e) => setVariety(e.target.value)}
-                      placeholder="e.g. HD-2967 / BT Cotton / Shriram 303"
+                      placeholder="HD-2967 / BT Cotton / Shriram 303"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-xs font-medium focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     />
                   </div>
@@ -526,7 +524,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Sowing / Planting Date (बुवाई की तारीख)
+                      {t('cropPlanner.sowingDate')}
                     </label>
                     <input
                       type="date"
@@ -538,19 +536,19 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
 
                   <div>
                     <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Current Growth Stage (अवस्था)
+                      {t('cropPlanner.growthStage')}
                     </label>
                     <select
                       value={growthStage}
                       onChange={(e) => setGrowthStage(e.target.value)}
                       className="w-full px-3 py-2.5 rounded-xl border border-stone-300 text-xs font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                     >
-                      <option value="Sowing / Seedling">Sowing / Emergence (अंकुरण)</option>
-                      <option value="Vegetative">Vegetative (वानस्पतिक)</option>
-                      <option value="Tillering / Branching">Tillering / Branching (कल्ले फूटना)</option>
-                      <option value="Flowering / Booting">Flowering / Booting (फूल / बाली)</option>
-                      <option value="Fruit / Grain Formation">Grain Formation (दाना भराव)</option>
-                      <option value="Maturity / Ripening">Maturity / Ripening (परिपक्वता)</option>
+                      <option value="Sowing / Seedling">Sowing / Emergence</option>
+                      <option value="Vegetative">Vegetative</option>
+                      <option value="Tillering / Branching">Tillering / Branching</option>
+                      <option value="Flowering / Booting">Flowering / Booting</option>
+                      <option value="Fruit / Grain Formation">Grain Formation</option>
+                      <option value="Maturity / Ripening">Maturity / Ripening</option>
                     </select>
                   </div>
                 </div>
@@ -560,9 +558,9 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
               <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-3">
                 <Sparkles className="w-5 h-5 text-emerald-700 shrink-0" />
                 <div>
-                  <p className="font-bold">Your farm profile is ready!</p>
+                  <p className="font-bold">{t('auth.verifiedSuccess')}</p>
                   <p className="text-[11px] text-emerald-800">
-                    KisanAI will automatically sync agro-meteorological spray forecasts and fertilizer recommendations for {cropName}.
+                    {t('app.subtitle')}
                   </p>
                 </div>
               </div>
@@ -575,7 +573,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   onClick={() => setCurrentStep(3)}
                   icon={<ArrowLeft className="w-4 h-4" />}
                 >
-                  Back
+                  {t('common.back')}
                 </Button>
                 <Button
                   id="complete-onboarding-btn"
@@ -585,7 +583,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({
                   onClick={handleFinish}
                   icon={<CheckCircle2 className="w-4 h-4" />}
                 >
-                  Open My Farm Dashboard (डैशबोर्ड खोलें)
+                  {t('onboarding.completeBtn')}
                 </Button>
               </div>
             </div>

@@ -7,23 +7,12 @@ import {
   CheckCircle2,
   Clock,
   Radio,
-  FileText,
-  Sparkles,
-  Search,
   ShieldCheck,
-  Award,
-  ChevronDown,
-  Phone,
-  Filter,
-  UserCheck,
-  Check,
 } from 'lucide-react';
 import {
   FarmerProfile,
   ExpertTicket,
-  RegionalAlert,
   KVKExpert,
-  KVKCenter,
 } from '../types/farming';
 import { expertService } from '../services/expertService';
 import { Card } from './ui/Card';
@@ -31,6 +20,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
 import { MetricCard } from './ui/MetricCard';
+import { useI18n } from '../context/I18nContext';
 
 interface OfficerDashboardProps {
   farmer: FarmerProfile;
@@ -62,8 +52,8 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
   farmer,
   tickets,
   onResolveTicket,
-  onNavigateTab,
 }) => {
+  const { t, lookupAgro } = useI18n();
   const [officers, setOfficers] = useState<KVKExpert[]>([]);
   const [selectedOfficer, setSelectedOfficer] = useState<KVKExpert | null>(null);
   const [selectedTicket, setSelectedTicket] = useState<ExpertTicket | null>(tickets[0] || null);
@@ -77,7 +67,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
       const allExp = await expertService.getExperts();
       setOfficers(allExp);
       if (allExp.length > 0) {
-        // Default to expert matching farmer's state/district if any, otherwise first
         const matched = allExp.find(
           (e) => e.district.toLowerCase() === farmer.district.toLowerCase()
         );
@@ -143,7 +132,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             <div className="flex items-center justify-end gap-1 mb-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
               <span className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">
-                Active ICAR Scientist
+                {t('expert.assignedOfficer')}
               </span>
             </div>
             <select
@@ -200,7 +189,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                 <div className="flex flex-wrap gap-3 pt-1 text-[11px] text-stone-500">
                   <span>🎓 {selectedOfficer.qualifications}</span>
                   <span>⏳ {selectedOfficer.experienceYears} Years Exp</span>
-                  <span>⭐ {selectedOfficer.rating} ({selectedOfficer.consultationsCount} Farmer Consultations)</span>
+                  <span>⭐ {selectedOfficer.rating} ({selectedOfficer.consultationsCount} Consultations)</span>
                 </div>
               </div>
             </div>
@@ -265,7 +254,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div>
                 <h2 className="text-sm font-extrabold text-stone-900">
-                  Farmer Escalation Queue
+                  {t('expert.myTickets')}
                 </h2>
                 <p className="text-[11px] text-stone-500">Incoming requests from district farmers</p>
               </div>
@@ -277,7 +266,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                     filterStatus === 'ALL' ? 'bg-white text-stone-900 shadow-2xs' : 'text-stone-500'
                   }`}
                 >
-                  All ({tickets.length})
+                  {t('common.all')} ({tickets.length})
                 </button>
                 <button
                   onClick={() => setFilterStatus('PENDING')}
@@ -301,41 +290,41 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             <div className="space-y-2.5 max-h-[600px] overflow-y-auto pr-1">
               {filteredTickets.length === 0 ? (
                 <div className="p-8 text-center bg-stone-50 rounded-xl text-xs text-stone-500">
-                  No cases matching current filter.
+                  {t('expert.noTickets')}
                 </div>
               ) : (
-                filteredTickets.map((t) => (
+                filteredTickets.map((tk) => (
                   <button
-                    key={t.id}
-                    onClick={() => setSelectedTicket(t)}
+                    key={tk.id}
+                    onClick={() => setSelectedTicket(tk)}
                     className={`w-full text-left p-3.5 rounded-2xl border transition-all space-y-1.5 cursor-pointer ${
-                      selectedTicket?.id === t.id
+                      selectedTicket?.id === tk.id
                         ? 'bg-purple-50/70 border-purple-400 shadow-2xs ring-1 ring-purple-300'
                         : 'bg-white border-stone-200 hover:border-purple-200'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span className="font-extrabold text-xs text-purple-800">{t.id}</span>
+                      <span className="font-extrabold text-xs text-purple-800">{tk.id}</span>
                       <Badge
                         variant={
-                          t.status === 'RESOLVED'
+                          tk.status === 'RESOLVED'
                             ? 'success'
-                            : t.urgency === 'Emergency'
+                            : tk.urgency === 'Emergency'
                             ? 'danger'
                             : 'warning'
                         }
                         size="sm"
                       >
-                        {t.status === 'RESOLVED' ? 'RESOLVED' : t.urgency}
+                        {tk.status === 'RESOLVED' ? 'RESOLVED' : tk.urgency}
                       </Badge>
                     </div>
-                    <p className="font-bold text-stone-900 text-xs line-clamp-1">{t.subject}</p>
+                    <p className="font-bold text-stone-900 text-xs line-clamp-1">{tk.subject}</p>
                     <div className="flex items-center justify-between text-[11px] text-stone-500 pt-0.5 border-t border-stone-100">
                       <span className="font-bold text-stone-800 truncate">
-                        👤 {t.farmerName}
+                        👤 {tk.farmerName}
                       </span>
                       <span className="text-stone-500 truncate">
-                        🌱 {t.cropName}
+                        🌱 {lookupAgro('crops', tk.cropName)}
                       </span>
                     </div>
                   </button>
@@ -390,11 +379,11 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-stone-700 text-xs">
                     <div className="p-2 bg-white rounded-lg border border-stone-200">
-                      <span className="text-stone-400 block text-[10px]">Crop</span>
-                      <strong className="text-stone-900">{selectedTicket.cropName}</strong>
+                      <span className="text-stone-400 block text-[10px]">{t('cropPlanner.activeCrop')}</span>
+                      <strong className="text-stone-900">{lookupAgro('crops', selectedTicket.cropName)}</strong>
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-stone-200">
-                      <span className="text-stone-400 block text-[10px]">Stage</span>
+                      <span className="text-stone-400 block text-[10px]">{t('calendar.growthStages')}</span>
                       <strong className="text-stone-900">{selectedTicket.growthStage}</strong>
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-stone-200">
@@ -402,11 +391,11 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       <strong className="text-stone-900">{selectedTicket.soilPh}</strong>
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-stone-200">
-                      <span className="text-stone-400 block text-[10px]">Soil Type</span>
-                      <strong className="text-stone-900">{selectedTicket.soilType}</strong>
+                      <span className="text-stone-400 block text-[10px]">{t('soil.title')}</span>
+                      <strong className="text-stone-900">{lookupAgro('soilTypes', selectedTicket.soilType)}</strong>
                     </div>
                     <div className="p-2 bg-white rounded-lg border border-stone-200">
-                      <span className="text-stone-400 block text-[10px]">Urgency</span>
+                      <span className="text-stone-400 block text-[10px]">{t('expert.urgency')}</span>
                       <strong className={selectedTicket.urgency === 'Emergency' ? 'text-red-700' : 'text-stone-900'}>
                         {selectedTicket.urgency}
                       </strong>
@@ -438,7 +427,6 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                       size="sm"
                       onClick={() => {
                         setPrescriptionText(selectedTicket.responseFromOfficer || '');
-                        // allow re-editing prescription
                         onResolveTicket(selectedTicket.id, '');
                       }}
                     >
@@ -458,7 +446,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                             key={tmpl.title}
                             type="button"
                             onClick={() => handleApplyTemplate(tmpl.text)}
-                            className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200 text-[10px] font-bold transition-all"
+                            className="px-2.5 py-1 rounded-lg bg-purple-50 text-purple-900 hover:bg-purple-100 border border-purple-200 text-[10px] font-bold transition-all cursor-pointer"
                           >
                             + {tmpl.title}
                           </button>
@@ -475,7 +463,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
                         value={prescriptionText}
                         onChange={(e) => setPrescriptionText(e.target.value)}
                         placeholder="Enter scientific fungicide/insecticide formulation with dosage per litre of water, spray timing, and safety waiting period..."
-                        className="agri-input text-xs"
+                        className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                       />
                     </div>
 
@@ -540,7 +528,7 @@ export const OfficerDashboard: React.FC<OfficerDashboardProps> = ({
             value={broadcastMessage}
             onChange={(e) => setBroadcastMessage(e.target.value)}
             placeholder="e.g. High humidity alert: Scout paddy fields for early blast symptoms; apply 5% Neem oil..."
-            className="flex-1 agri-input text-xs"
+            className="flex-1 px-3 py-2 rounded-xl border border-stone-300 text-xs"
           />
           <Button
             variant="danger"

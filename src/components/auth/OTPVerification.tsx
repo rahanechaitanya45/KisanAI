@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, RefreshCw, ArrowLeft, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { useI18n } from '../../context/I18nContext';
 
 interface OTPVerificationProps {
   phone: string;
@@ -24,6 +24,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
   initialCooldown = 60,
   demoOtpHint = '123456',
 }) => {
+  const { t } = useI18n();
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [cooldown, setCooldown] = useState<number>(initialCooldown);
   const [isResending, setIsResending] = useState<boolean>(false);
@@ -128,7 +129,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
     e.preventDefault();
     const code = digits.join('');
     if (code.length !== 6) {
-      setLocalError('Please enter all 6 digits.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
     triggerVerification(code);
@@ -156,9 +157,9 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
           <CheckCircle2 className="w-10 h-10 text-emerald-700 animate-bounce" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-xl font-bold text-stone-900">Phone Number Verified!</h3>
+          <h3 className="text-xl font-bold text-stone-900">{t('auth.verifiedSuccess')}</h3>
           <p className="text-xs text-stone-500">
-            Setting up your secure personalized farm workspace...
+            {t('common.loading')}...
           </p>
         </div>
       </div>
@@ -177,7 +178,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
         <div className="flex items-center gap-1.5 font-semibold">
           <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-          <span>Demo Mode: Code is {demoOtpHint}</span>
+          <span>Demo Mode OTP: {demoOtpHint}</span>
         </div>
         <button
           type="button"
@@ -194,8 +195,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
 
       <div className="space-y-1">
         <p className="text-xs text-stone-600">
-          We sent a 6-digit verification code to{' '}
-          <span className="font-bold text-stone-900">{formattedPhone}</span>
+          {t('auth.otpSentMessage', { phone: formattedPhone })}
         </p>
         <button
           type="button"
@@ -214,7 +214,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             <p className="font-medium">{error || localError}</p>
             {attemptsLeft !== null && attemptsLeft <= 3 && (
               <p className="text-[11px] font-bold mt-0.5">
-                {attemptsLeft} verification attempts remaining.
+                {attemptsLeft} attempts remaining.
               </p>
             )}
           </div>
@@ -256,13 +256,13 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
           disabled={digits.join('').length !== 6 || isLoading}
           icon={<ShieldCheck className="w-4 h-4" />}
         >
-          {isLoading ? 'Verifying...' : 'Verify & Log In (सत्यापित करें)'}
+          {isLoading ? t('common.loading') : t('auth.verifyOtp')}
         </Button>
       </form>
 
       {/* Resend OTP Section */}
       <div className="text-center pt-2 space-y-1">
-        <p className="text-xs text-stone-500">Didn't receive the verification code?</p>
+        <p className="text-xs text-stone-500">{t('auth.resendOtp')}</p>
         {cooldown > 0 ? (
           <p className="text-xs font-semibold text-stone-600">
             Resend available in <span className="font-mono text-emerald-800">{formatTimer(cooldown)}</span>
@@ -275,7 +275,7 @@ export const OTPVerification: React.FC<OTPVerificationProps> = ({
             className="text-xs font-bold text-emerald-700 hover:underline inline-flex items-center gap-1.5 cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
-            {isResending ? 'Sending new code...' : 'Resend OTP (पुनः भेजें)'}
+            {isResending ? t('common.loading') : t('auth.resendOtp')}
           </button>
         )}
       </div>

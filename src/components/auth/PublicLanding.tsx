@@ -4,26 +4,20 @@ import {
   Sparkles,
   Phone,
   Camera,
-  Layers,
-  DollarSign,
   Landmark,
-  ShieldCheck,
   Globe,
   ArrowRight,
-  CheckCircle2,
   Users,
-  Building2,
   TrendingUp,
   CloudRain,
-  BookOpen,
-  Calendar,
 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { Badge } from '../ui/Badge';
 import { LanguageCode } from '../../types/farming';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../../data/i18n';
+import { SUPPORTED_LANGUAGES } from '../../data/i18n';
 import { DEMO_FARMERS } from '../../data/demoFarmers';
+import { useI18n } from '../../context/I18nContext';
 
 interface PublicLandingProps {
   currentLanguage: LanguageCode;
@@ -40,6 +34,13 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
   onOpenSignup,
   onQuickDemoLogin,
 }) => {
+  const { t, setLanguage, lookupAgro } = useI18n();
+
+  const handleLangChange = (newLang: LanguageCode) => {
+    setLanguage(newLang);
+    onSelectLanguage(newLang);
+  };
+
   return (
     <div className="min-h-screen bg-[#f8faf6] flex flex-col font-sans selection:bg-emerald-100 selection:text-emerald-950">
       {/* Top Public Navigation - Light Aesthetic */}
@@ -51,10 +52,10 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             </div>
             <div>
               <span className="font-extrabold text-xl tracking-tight text-stone-900">
-                Kisan<span className="text-emerald-700 font-black">AI</span>
+                {t('app.name')}
               </span>
               <span className="ml-2 text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hidden sm:inline-block">
-                किसान सेवा
+                {t('app.badge')}
               </span>
             </div>
           </div>
@@ -66,7 +67,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
               <select
                 id="landing-lang-select"
                 value={currentLanguage}
-                onChange={(e) => onSelectLanguage(e.target.value as LanguageCode)}
+                onChange={(e) => handleLangChange(e.target.value as LanguageCode)}
                 aria-label="Select Language"
                 className="bg-stone-50 border border-stone-200 rounded-lg px-2 py-1 text-xs font-bold text-stone-800 focus:ring-2 focus:ring-emerald-700 cursor-pointer"
               >
@@ -85,7 +86,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
               onClick={onOpenLogin}
               className="text-emerald-800 border-emerald-300 hover:bg-emerald-50"
             >
-              Sign In (लॉग इन)
+              {t('auth.login')}
             </Button>
 
             <Button
@@ -95,7 +96,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
               onClick={onOpenSignup}
               icon={<ArrowRight className="w-4 h-4" />}
             >
-              Register Farm
+              {t('auth.register')}
             </Button>
           </div>
         </div>
@@ -110,15 +111,15 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
         <div className="text-center max-w-3xl mx-auto space-y-5">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold shadow-2xs">
             <Sparkles className="w-4 h-4 text-emerald-700" />
-            <span>Pan-India Agricultural AI Platform • 13 Regional Languages</span>
+            <span>{t('app.subtitle')}</span>
           </div>
 
           <h1 className="text-3xl sm:text-5xl font-black text-stone-900 tracking-tight leading-tight">
-            Personalized Farm Advisory For Every Indian Farmer
+            {t('app.tagline')}
           </h1>
 
           <p className="text-sm sm:text-base text-stone-600 max-w-2xl mx-auto leading-relaxed">
-            Real-time agro-meteorology, stage-specific fertilizer dosage, photographic pest diagnosis, and mandi market rates built specifically for Indian soils.
+            {t('app.description')}
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
@@ -129,7 +130,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
               onClick={onOpenSignup}
               icon={<ArrowRight className="w-5 h-5" />}
             >
-              Get Started Free (मुफ़्त शुरू करें)
+              {t('auth.register')}
             </Button>
             <Button
               id="hero-phone-login-btn"
@@ -138,7 +139,7 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
               onClick={onOpenLogin}
               icon={<Phone className="w-4 h-4" />}
             >
-              Sign In with Mobile OTP
+              {t('auth.phoneLogin')}
             </Button>
           </div>
         </div>
@@ -149,41 +150,44 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             <div>
               <h3 className="text-sm font-bold text-stone-900 flex items-center gap-2">
                 <Users className="w-4 h-4 text-emerald-700" />
-                <span>Instant Demo Access (Pan-India Archetypes)</span>
+                <span>{t('auth.quickDemo')}</span>
               </h3>
               <p className="text-xs text-stone-500">
-                Explore real agro-climatic profiles without signing up
+                {t('auth.quickDemoDesc')}
               </p>
             </div>
             <Badge variant="success" size="sm">
-              Live Interactive
+              {t('common.active')}
             </Badge>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-            {DEMO_FARMERS.map((demo, idx) => (
-              <button
-                key={demo.farmer.id}
-                onClick={() => onQuickDemoLogin(idx)}
-                className="p-3.5 rounded-2xl bg-[#f9faf7] hover:bg-emerald-50/70 border border-stone-200/90 hover:border-emerald-300 text-left transition-all group cursor-pointer"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-stone-900 group-hover:text-emerald-950">
-                    {demo.farmer.name}
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-stone-200 text-stone-700">
-                    {demo.farmer.farms[0]?.totalAreaAcres} Ac
-                  </span>
-                </div>
-                <p className="text-[11px] text-stone-500">
-                  {demo.farmer.district}, {demo.farmer.state}
-                </p>
-                <div className="mt-2 text-[11px] font-semibold text-emerald-800 flex items-center justify-between">
-                  <span>{demo.farmer.farms[0]?.plots[0]?.currentCropSeason?.cropName}</span>
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
-            ))}
+            {DEMO_FARMERS.map((demo, idx) => {
+              const demoCropName = demo.farmer.farms[0]?.plots[0]?.currentCropSeason?.cropName || '';
+              return (
+                <button
+                  key={demo.farmer.id}
+                  onClick={() => onQuickDemoLogin(idx)}
+                  className="p-3.5 rounded-2xl bg-[#f9faf7] hover:bg-emerald-50/70 border border-stone-200/90 hover:border-emerald-300 text-left transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-stone-900 group-hover:text-emerald-950">
+                      {demo.farmer.name}
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-stone-200 text-stone-700">
+                      {demo.farmer.farms[0]?.totalAreaAcres} {t('common.acre')}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-stone-500">
+                    {demo.farmer.district}, {demo.farmer.state}
+                  </p>
+                  <div className="mt-2 text-[11px] font-semibold text-emerald-800 flex items-center justify-between">
+                    <span>{lookupAgro('crops', demoCropName)}</span>
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -193,9 +197,9 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-center mb-3">
               <Camera className="w-5 h-5 text-emerald-700" />
             </div>
-            <h4 className="text-sm font-bold text-stone-900">Crop Health Scanner</h4>
+            <h4 className="text-sm font-bold text-stone-900">{t('nav.cropHealth')}</h4>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              Instant leaf image diagnosis for pests, blights, and nutrient deficiencies.
+              {t('scanner.diagnosisSubtitle')}
             </p>
           </Card>
 
@@ -203,9 +207,9 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center justify-center mb-3">
               <TrendingUp className="w-5 h-5 text-amber-700" />
             </div>
-            <h4 className="text-sm font-bold text-stone-900">Crop Planner & Economics</h4>
+            <h4 className="text-sm font-bold text-stone-900">{t('nav.cropPlanner')}</h4>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              Soil-crop matching, input budgeting, and dynamic yield predictions.
+              {t('dashboard.cropPlannerAction')}
             </p>
           </Card>
 
@@ -213,9 +217,9 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-sky-50 border border-sky-200 text-sky-800 flex items-center justify-center mb-3">
               <CloudRain className="w-5 h-5 text-sky-700" />
             </div>
-            <h4 className="text-sm font-bold text-stone-900">Agro-Meteorology</h4>
+            <h4 className="text-sm font-bold text-stone-900">{t('nav.weather')}</h4>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              Spray windows, rain probabilities, and frost/heat stress advisories.
+              {t('weather.syncedWithDoppler')}
             </p>
           </Card>
 
@@ -223,9 +227,9 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
             <div className="w-10 h-10 rounded-2xl bg-purple-50 border border-purple-200 text-purple-800 flex items-center justify-center mb-3">
               <Landmark className="w-5 h-5 text-purple-700" />
             </div>
-            <h4 className="text-sm font-bold text-stone-900">Govt Schemes & Subsidies</h4>
+            <h4 className="text-sm font-bold text-stone-900">{t('nav.govSchemes')}</h4>
             <p className="text-xs text-stone-500 mt-1 leading-relaxed">
-              PM-Kisan, PMFBY, drip subsidies, and direct state agricultural portals.
+              {t('dashboard.govSchemesAction')}
             </p>
           </Card>
         </div>
@@ -237,10 +241,10 @@ export const PublicLanding: React.FC<PublicLandingProps> = ({
           <div className="flex items-center gap-2">
             <span className="font-extrabold text-stone-900 tracking-tight flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-700"></span>
-              KisanAI Platform
+              {t('app.name')}
             </span>
             <span className="text-stone-300">•</span>
-            <span className="text-stone-600">Dedicated to Indian Farmers (किसान सेवा)</span>
+            <span className="text-stone-600">{t('app.badge')}</span>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] text-stone-500">
             <span className="px-2.5 py-1 rounded-full bg-stone-100 border border-stone-200 font-medium">

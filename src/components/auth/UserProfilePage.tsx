@@ -1,23 +1,14 @@
 import React, { useState } from 'react';
 import {
-  User,
   Phone,
-  Mail,
   MapPin,
-  Globe,
   ShieldCheck,
   Building2,
-  Calendar,
   Save,
   LogOut,
   Sprout,
   CheckCircle2,
-  AlertCircle,
   KeyRound,
-  Shield,
-  Layers,
-  Sparkles,
-  Award,
 } from 'lucide-react';
 import { Card } from '../ui/Card';
 import { Button } from '../ui/Button';
@@ -25,8 +16,9 @@ import { Badge } from '../ui/Badge';
 import { SectionHeader } from '../ui/SectionHeader';
 import { FarmerProfile, LanguageCode } from '../../types/farming';
 import { AuthUser } from '../../types/auth';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../../data/i18n';
+import { SUPPORTED_LANGUAGES } from '../../data/i18n';
 import { INDIA_AGRO_STATES } from '../../data/indiaAgroData';
+import { useI18n } from '../../context/I18nContext';
 
 interface UserProfilePageProps {
   farmer: FarmerProfile;
@@ -43,6 +35,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   onLogout,
   onNavigateTab,
 }) => {
+  const { t, language, setLanguage, lookupAgro } = useI18n();
   const [activeSubTab, setActiveSubTab] = useState<'profile' | 'farms' | 'security' | 'language'>('profile');
 
   // Edit States
@@ -53,7 +46,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
   const [district, setDistrict] = useState(farmer.district);
   const [village, setVillage] = useState(farmer.village || '');
   const [experience, setExperience] = useState(farmer.farmingExperienceYears || 12);
-  const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(farmer.preferredLanguage);
+  const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(farmer.preferredLanguage || language);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -73,6 +66,18 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
     setSaveSuccess(false);
 
     setTimeout(() => {
+      const updatedFarms = farmer.farms?.map((f, idx) => {
+        if (idx === 0 || f.isPrimary) {
+          return {
+            ...f,
+            state,
+            district,
+            village: village || f.village,
+          };
+        }
+        return f;
+      }) || [];
+
       const updated: FarmerProfile = {
         ...farmer,
         name,
@@ -82,6 +87,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
         village: village || undefined,
         farmingExperienceYears: experience,
         preferredLanguage,
+        farms: updatedFarms.length > 0 ? updatedFarms : farmer.farms,
       };
 
       onUpdateProfile(updated);
@@ -89,6 +95,12 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     }, 400);
+  };
+
+  const handleSelectLang = (code: LanguageCode) => {
+    setPreferredLanguage(code);
+    setLanguage(code);
+    onUpdateProfile({ ...farmer, preferredLanguage: code });
   };
 
   return (
@@ -105,7 +117,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 {farmer.name}
               </h1>
               <Badge variant={farmer.role === 'AGRICULTURAL_OFFICER' ? 'purple' : 'success'} size="md">
-                {farmer.role === 'AGRICULTURAL_OFFICER' ? 'KVK Extension Officer' : 'Verified Farmer'}
+                {farmer.role === 'AGRICULTURAL_OFFICER' ? t('nav.officerDashboard') : t('nav.krishiMitra')}
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-stone-600 flex flex-wrap items-center gap-2 mt-1">
@@ -131,7 +143,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
             icon={<LogOut className="w-4 h-4 text-red-600" />}
             className="text-red-700 border-red-200 hover:bg-red-50 hover:border-red-300"
           >
-            Log Out (लॉग आउट)
+            {t('auth.logout')}
           </Button>
         </div>
       </div>
@@ -146,7 +158,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          Personal Profile
+          {t('profile.title')}
         </button>
         <button
           onClick={() => setActiveSubTab('farms')}
@@ -156,7 +168,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          My Farms ({farmer.farms.length})
+          {t('profile.farmDetails')} ({farmer.farms.length})
         </button>
         <button
           onClick={() => setActiveSubTab('security')}
@@ -166,7 +178,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          Security & Sessions
+          {t('profile.accountSecurity')}
         </button>
         <button
           onClick={() => setActiveSubTab('language')}
@@ -176,7 +188,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
           }`}
         >
-          Regional Language
+          {t('profile.preferredLanguage')}
         </button>
       </div>
 
@@ -184,7 +196,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       {saveSuccess && (
         <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-          <span className="font-bold">Your farmer profile has been saved successfully.</span>
+          <span className="font-bold">{t('profile.profileUpdated')}</span>
         </div>
       )}
 
@@ -192,14 +204,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       {activeSubTab === 'profile' && (
         <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
           <SectionHeader
-            title="Personal & Geographic Information"
-            subtitle="Used to fetch district-specific weather telemetry, mandi prices, and soil advisory."
+            title={t('profile.title')}
+            subtitle={t('profile.subtitle')}
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                Full Name (पूरा नाम)
+                {t('auth.fullName')}
               </label>
               <input
                 type="text"
@@ -211,7 +223,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                Registered Mobile Number (सत्यापित मोबाइल)
+                {t('auth.mobileNumber')}
               </label>
               <div className="relative flex items-center">
                 <input
@@ -221,27 +233,27 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-bold focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                 />
                 <span className="absolute right-3 text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
-                  Verified
+                  {t('common.verified')}
                 </span>
               </div>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                Email Address (ईमेल)
+                {t('auth.email')}
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Optional email address"
+                placeholder="Optional email"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 text-sm font-medium focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
               />
             </div>
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                Farming Experience (खेती का अनुभव)
+                {t('onboarding.experience')}
               </label>
               <input
                 type="number"
@@ -253,7 +265,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                State (राज्य)
+                {t('onboarding.state')}
               </label>
               <select
                 value={state}
@@ -270,7 +282,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                District (ज़िला)
+                {t('onboarding.district')}
               </label>
               <select
                 value={district}
@@ -279,7 +291,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               >
                 {currentState.districts.map((d) => (
                   <option key={d.name} value={d.name}>
-                    {d.name}
+                    {d.nameMr ? `${d.name} (${d.nameMr})` : d.name}
                   </option>
                 ))}
               </select>
@@ -287,7 +299,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                Village / Taluka (गांव / तहसील)
+                {t('onboarding.village')}
               </label>
               <input
                 type="text"
@@ -320,7 +332,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               isLoading={isSaving}
               icon={<Save className="w-4 h-4" />}
             >
-              Save Profile Changes
+              {t('common.save')}
             </Button>
           </div>
         </Card>
@@ -331,7 +343,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <SectionHeader
-              title="Registered Farms & Cultivation Plots"
+              title={t('profile.farmDetails')}
               subtitle="All farm parcels under your account"
             />
             <Button
@@ -340,7 +352,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
               onClick={() => onNavigateTab('soil')}
               icon={<Sprout className="w-4 h-4" />}
             >
-              Manage Plots & Soil
+              {t('nav.soilHealth')}
             </Button>
           </div>
 
@@ -355,13 +367,13 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                     </p>
                   </div>
                   <Badge variant="primary" size="md">
-                    {farm.totalAreaAcres} Acres
+                    {farm.totalAreaAcres} {t('common.acre')}
                   </Badge>
                 </div>
 
                 <div className="space-y-2 pt-2 border-t border-stone-100">
                   <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                    Cultivation Plots ({farm.plots.length})
+                    {t('profile.farmDetails')} ({farm.plots.length})
                   </span>
                   <div className="space-y-1.5">
                     {farm.plots.map((plot) => (
@@ -372,11 +384,11 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                         <div>
                           <p className="font-bold text-stone-900">{plot.name}</p>
                           <p className="text-[11px] text-stone-500">
-                            Soil: {plot.soil.soilType} • {plot.waterSource}
+                            {t('onboarding.soilType')}: {lookupAgro('soilTypes', plot.soil.soilType)} • {lookupAgro('waterSources', plot.waterSource)}
                           </p>
                         </div>
                         <Badge variant="earth" size="sm">
-                          {plot.currentCropSeason?.cropName || 'Empty'}
+                          {plot.currentCropSeason?.cropName ? lookupAgro('crops', plot.currentCropSeason.cropName) : t('common.noData')}
                         </Badge>
                       </div>
                     ))}
@@ -392,7 +404,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       {activeSubTab === 'security' && (
         <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
           <SectionHeader
-            title="Account Security & Access Control"
+            title={t('profile.accountSecurity')}
             subtitle="Manage your session, verified phone status, and roles."
           />
 
@@ -403,14 +415,14 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <ShieldCheck className="w-6 h-6 text-emerald-700" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-stone-900">Mobile OTP Authentication</h4>
+                  <h4 className="text-sm font-bold text-stone-900">{t('auth.phoneLogin')}</h4>
                   <p className="text-xs text-stone-500">
-                    Two-factor OTP verified for +91 {farmer.phone}
+                    Verified for +91 {farmer.phone}
                   </p>
                 </div>
               </div>
               <Badge variant="success" size="sm">
-                Active & Protected
+                {t('common.active')}
               </Badge>
             </div>
 
@@ -420,9 +432,9 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <Building2 className="w-6 h-6 text-purple-700" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-stone-900">Access Permission Tier</h4>
+                  <h4 className="text-sm font-bold text-stone-900">Account Role</h4>
                   <p className="text-xs text-stone-500">
-                    Current role: {farmer.role === 'AGRICULTURAL_OFFICER' ? 'Agricultural Officer / Scientist' : 'Farmer'}
+                    {farmer.role === 'AGRICULTURAL_OFFICER' ? t('nav.officerDashboard') : t('nav.krishiMitra')}
                   </p>
                 </div>
               </div>
@@ -437,9 +449,9 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                   <KeyRound className="w-6 h-6 text-amber-700" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-stone-900">Active Session Token</h4>
+                  <h4 className="text-sm font-bold text-stone-900">Active Session</h4>
                   <p className="text-xs text-stone-500 font-mono">
-                    Token ID: ksn_•••••••••••••••• (30-day persistence)
+                    Token ID: ksn_••••••••••••••••
                   </p>
                 </div>
               </div>
@@ -449,7 +461,7 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
                 onClick={onLogout}
                 className="text-red-700 border-red-200 hover:bg-red-50"
               >
-                Sign Out
+                {t('auth.logout')}
               </Button>
             </div>
           </div>
@@ -460,31 +472,28 @@ export const UserProfilePage: React.FC<UserProfilePageProps> = ({
       {activeSubTab === 'language' && (
         <Card variant="elevated" className="p-6 sm:p-8 space-y-6">
           <SectionHeader
-            title="Pan-India Language Selection"
+            title={t('profile.preferredLanguage')}
             subtitle="Choose from 13 constitutionally recognized regional languages for chat, speech, and advisories."
           />
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {SUPPORTED_LANGUAGES.map((lang) => (
+            {SUPPORTED_LANGUAGES.map((l) => (
               <button
-                key={lang.code}
-                onClick={() => {
-                  setPreferredLanguage(lang.code);
-                  onUpdateProfile({ ...farmer, preferredLanguage: lang.code });
-                }}
+                key={l.code}
+                onClick={() => handleSelectLang(l.code)}
                 className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer ${
-                  preferredLanguage === lang.code
+                  preferredLanguage === l.code
                     ? 'bg-emerald-800 text-white border-emerald-900 shadow-sm'
                     : 'bg-stone-50 border-stone-200 text-stone-800 hover:border-emerald-700 hover:bg-emerald-50/50'
                 }`}
               >
-                <p className="font-extrabold text-sm leading-tight">{lang.nativeLabel}</p>
+                <p className="font-extrabold text-sm leading-tight">{l.nativeLabel}</p>
                 <p
                   className={`text-xs mt-0.5 ${
-                    preferredLanguage === lang.code ? 'text-emerald-200' : 'text-stone-500'
+                    preferredLanguage === l.code ? 'text-emerald-200' : 'text-stone-500'
                   }`}
                 >
-                  {lang.label}
+                  {l.label}
                 </p>
               </button>
             ))}

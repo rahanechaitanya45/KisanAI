@@ -5,21 +5,16 @@ import {
   MicOff,
   Plus,
   Coins,
-  TrendingDown,
   TrendingUp,
   Tag,
-  Calendar,
   Sparkles,
   Trash2,
-  Filter,
 } from 'lucide-react';
 import {
   FarmerProfile,
   FarmPlot,
   FarmDiaryEntry,
-  ExpenseCategory,
 } from '../types/farming';
-import { getTranslation } from '../data/i18n';
 import { parseNaturalLanguageDiary } from '../services/aiService';
 import { voiceAssistant } from '../services/voiceService';
 import { Card } from './ui/Card';
@@ -27,6 +22,7 @@ import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
 import { MetricCard } from './ui/MetricCard';
+import { useI18n } from '../context/I18nContext';
 
 interface FarmDiaryProps {
   farmer: FarmerProfile;
@@ -43,12 +39,11 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
   onAddEntry,
   onDeleteEntry,
 }) => {
+  const { t, language, lookupAgro } = useI18n();
   const [naturalText, setNaturalText] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-
-  const lang = farmer.preferredLanguage;
 
   const handleToggleVoice = () => {
     if (isRecording) {
@@ -57,7 +52,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
     } else {
       setIsRecording(true);
       voiceAssistant.startListening(
-        lang,
+        language,
         (transcript) => {
           setIsRecording(false);
           setNaturalText(transcript);
@@ -84,7 +79,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
         text,
         selectedPlot.farmId,
         selectedPlot.id,
-        lang
+        language
       );
 
       const newEntry: FarmDiaryEntry = {
@@ -125,8 +120,8 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header */}
       <SectionHeader
-        title="Farm Activity & Expense Ledger"
-        subtitle={`Plot: ${selectedPlot?.name} (${selectedPlot?.currentCropSeason?.cropName}) • Voice and natural language accounting for labor, inputs, machinery, and crop receipts`}
+        title={t('diary.title')}
+        subtitle={`${t('cropPlanner.activeCrop')}: ${selectedPlot?.name} (${lookupAgro('crops', selectedPlot?.currentCropSeason?.cropName || '')})`}
         badge={
           <Badge variant="primary" size="sm">
             <BookOpen className="w-3.5 h-3.5 mr-1" />
@@ -135,12 +130,12 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
         }
         action={
           <div className="p-3 bg-emerald-50/70 border border-emerald-200 rounded-2xl text-xs text-emerald-950 text-right">
-            <span className="text-stone-500 font-medium block">Total Season Investment</span>
+            <span className="text-stone-500 font-medium block">{t('diary.totalExpenses')}</span>
             <span className="text-lg font-extrabold text-emerald-900">
               ₹{totalExpense.toLocaleString()}
             </span>
             <span className="text-[11px] text-stone-500 block">
-              (₹{(totalExpense / (selectedPlot?.areaAcres || 1)).toFixed(0)} / acre)
+              (₹{(totalExpense / (selectedPlot?.areaAcres || 1)).toFixed(0)} / {t('common.acre')})
             </span>
           </div>
         }
@@ -150,7 +145,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
       <Card variant="standard" padding="lg" className="space-y-3">
         <h2 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
           <Sparkles className="w-4 h-4 text-emerald-700" />
-          <span>Speak or Type Your Farm Operation / Expense</span>
+          <span>{t('diary.voiceRecord')}</span>
         </h2>
 
         <div className="flex flex-col sm:flex-row items-center gap-2.5">
@@ -162,8 +157,8 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAutoParse();
               }}
-              placeholder='e.g. "Bought 2 bags Urea for ₹540 and paid ₹1200 for 3 weeding laborers today"'
-              className="agri-input pl-4 pr-12 py-3 text-xs sm:text-sm"
+              placeholder={t('diary.inputPlaceholder')}
+              className="w-full pl-4 pr-12 py-3 rounded-xl border border-stone-300 text-xs sm:text-sm bg-stone-50/50"
             />
             <button
               onClick={handleToggleVoice}
@@ -186,40 +181,15 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
             isLoading={isParsing}
             leftIcon={<Plus className="w-4 h-4" />}
           >
-            <span>Log to Ledger</span>
+            <span>{t('diary.addLog')}</span>
           </Button>
-        </div>
-
-        {/* Quick sample chips */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-stone-500">
-          <span className="font-bold text-stone-600">Quick examples:</span>
-          <button
-            onClick={() => setNaturalText('Purchased 50kg DAP fertilizer for ₹1,350')}
-            className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-700 border border-stone-200 cursor-pointer"
-          >
-            "DAP Fertilizer ₹1,350"
-          </button>
-          <button
-            onClick={() =>
-              setNaturalText('Paid tractor driver ₹2,000 for 4 hours rotavator ploughing')
-            }
-            className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-700 border border-stone-200 cursor-pointer"
-          >
-            "Tractor Ploughing ₹2,000"
-          </button>
-          <button
-            onClick={() => setNaturalText('Bought 500ml Neem oil bio-pesticide for ₹380')}
-            className="px-2.5 py-1 rounded-full bg-stone-100 hover:bg-emerald-50 text-stone-700 border border-stone-200 cursor-pointer"
-          >
-            "Neem Bio-pesticide ₹380"
-          </button>
         </div>
       </Card>
 
       {/* Financial Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard
-          title="Season Expenses"
+          title={t('diary.totalExpenses')}
           value={`₹${totalExpense.toLocaleString()}`}
           subtitle={`${entries.length} logged transactions`}
           icon={<Coins className="w-5 h-5 text-rose-700" />}
@@ -228,7 +198,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
         />
 
         <MetricCard
-          title="Est. Gross Harvest Value"
+          title={t('diary.estimatedIncome')}
           value={`₹${estimatedCropRevenue.toLocaleString()}`}
           subtitle="Based on current Mandi MSP"
           icon={<TrendingUp className="w-5 h-5 text-emerald-700" />}
@@ -237,9 +207,9 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
         />
 
         <MetricCard
-          title="Projected Net Profit"
+          title={t('diary.netProfit')}
           value={`₹${projectedNetIncome.toLocaleString()}`}
-          subtitle={`+₹${(projectedNetIncome / (selectedPlot?.areaAcres || 1)).toFixed(0)} / acre`}
+          subtitle={`+₹${(projectedNetIncome / (selectedPlot?.areaAcres || 1)).toFixed(0)} / ${t('common.acre')}`}
           icon={<TrendingUp className="w-5 h-5 text-emerald-700" />}
           iconBgColor="bg-emerald-50 border-emerald-200"
           badge={<Badge variant="primary" size="sm">Net Gain</Badge>}
@@ -250,7 +220,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
       <Card variant="standard" padding="lg" className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-200">
           <h3 className="text-sm font-extrabold text-stone-900">
-            Recorded Activity & Cost Entries ({filteredEntries.length})
+            {t('diary.activityLog')} ({filteredEntries.length})
           </h3>
 
           <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none">
@@ -265,7 +235,7 @@ export const FarmDiary: React.FC<FarmDiaryProps> = ({
                       : 'bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200'
                   }`}
                 >
-                  {cat}
+                  {cat === 'All' ? t('common.all') : cat}
                 </button>
               )
             )}

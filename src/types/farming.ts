@@ -111,6 +111,8 @@ export interface FarmPlot {
   farmId?: string;
   name: string;
   areaAcres: number;
+  latitude?: number;
+  longitude?: number;
   soil: SoilProfile;
   waterSource: WaterSource;
   currentCropSeason?: CropSeason;
@@ -126,6 +128,8 @@ export interface Farm {
   talukOrBlock?: string;
   village?: string;
   pincode?: string;
+  latitude?: number;
+  longitude?: number;
   totalAreaAcres: number;
   farmingType?: FarmingType;
   plots: FarmPlot[];
@@ -140,6 +144,8 @@ export interface FarmerProfile {
   state: string;
   district: string;
   village?: string;
+  latitude?: number;
+  longitude?: number;
   farmingExperienceYears?: number;
   primaryGoal?: 'increase_yield' | 'reduce_cost' | 'soil_health' | 'pest_control' | 'schemes' | 'market_profit';
   landholdingCategory?: 'Small & Marginal' | 'Medium' | 'Large';
@@ -148,6 +154,32 @@ export interface FarmerProfile {
   farms: Farm[];
   role: 'FARMER' | 'AGRICULTURAL_OFFICER' | 'ADMIN';
   onboardingCompleted?: boolean;
+}
+
+export interface FarmLocation {
+  state: string;
+  district: string;
+  subDistrict?: string;
+  village?: string;
+  latitude?: number;
+  longitude?: number;
+  locationName: string;
+  source: 'plot' | 'farm' | 'village' | 'district' | 'state' | 'gps' | 'unresolved';
+  isMissing?: boolean;
+}
+
+export interface WeatherAlertItem {
+  id: string;
+  type: 'heavy-rain' | 'thunderstorm' | 'heatwave' | 'frost' | 'pest-risk' | 'high-winds' | 'general';
+  severity: 'WARNING' | 'ADVISORY' | 'WATCH' | 'NORMAL';
+  headline: string;
+  description: string;
+  affectedArea: string;
+  cropAction: string;
+  startTime?: string;
+  endTime?: string;
+  source: string;
+  issuedAt: string;
 }
 
 export interface WeatherCondition {
@@ -178,8 +210,17 @@ export interface WeatherContext {
   current: WeatherCondition;
   forecast: DailyForecast[];
   locationName: string;
+  state?: string;
+  district?: string;
+  village?: string;
+  latitude?: number;
+  longitude?: number;
   lastUpdated: string;
   isSimulated?: boolean;
+  isCached?: boolean;
+  cacheAgeMinutes?: number;
+  alerts?: WeatherAlertItem[];
+  source?: string;
 }
 
 export interface FarmTask {

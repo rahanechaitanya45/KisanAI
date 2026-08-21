@@ -2,19 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   User,
   LogOut,
-  Settings,
-  MapPin,
-  Globe,
   HelpCircle,
   ChevronDown,
-  ShieldCheck,
-  Building2,
   Sprout,
-  Phone,
 } from 'lucide-react';
-import { FarmerProfile, LanguageCode } from '../../types/farming';
+import { FarmerProfile } from '../../types/farming';
 import { AuthUser } from '../../types/auth';
-import { Badge } from '../ui/Badge';
+import { useI18n } from '../../context/I18nContext';
 
 interface UserMenuProps {
   farmer: FarmerProfile;
@@ -30,6 +24,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
   onNavigateTab,
   onLogout,
 }) => {
+  const { t } = useI18n();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -43,7 +38,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const displayName = farmer.name || authUser?.name || 'Farmer';
+  const displayName = farmer.name || authUser?.name || t('nav.profile');
   const displayPhone = farmer.phone || authUser?.phone;
   const initial = displayName.charAt(0).toUpperCase();
 
@@ -53,7 +48,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         id="user-menu-btn"
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 p-1 sm:pr-2.5 rounded-xl bg-emerald-800/80 hover:bg-emerald-800 border border-emerald-700 text-white text-xs font-semibold transition-all shadow-xs cursor-pointer focus:outline-none focus:ring-2 focus:ring-emerald-400"
-        title="Account & Profile Menu"
+        title={t('nav.profile')}
       >
         <div className="w-7 h-7 rounded-lg bg-emerald-950 text-emerald-300 flex items-center justify-center font-bold text-xs border border-emerald-600">
           {initial}
@@ -61,7 +56,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
         <div className="hidden sm:block text-left leading-tight">
           <p className="text-xs font-bold text-white max-w-[100px] truncate">{displayName}</p>
           <p className="text-[10px] text-emerald-200/80 font-medium">
-            {farmer.role === 'AGRICULTURAL_OFFICER' ? 'Officer' : 'Farmer'}
+            {farmer.role === 'AGRICULTURAL_OFFICER' ? t('nav.officerDashboard') : t('nav.krishiMitra')}
           </p>
         </div>
         <ChevronDown className="w-3.5 h-3.5 text-emerald-200/70 shrink-0" />
@@ -80,7 +75,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
                 {farmer.district}, {farmer.state}
               </span>
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-700">
-                {farmer.farms.length} {farmer.farms.length === 1 ? 'Farm' : 'Farms'}
+                {farmer.farms.length} {farmer.farms.length === 1 ? t('nav.switchFarm') : t('profile.landHoldings')}
               </span>
             </div>
           </div>
@@ -96,7 +91,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left font-medium text-stone-700 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2.5 transition-colors cursor-pointer"
             >
               <User className="w-4 h-4 text-emerald-700" />
-              <span>My Profile & Settings</span>
+              <span>{t('profile.title')}</span>
             </button>
 
             <button
@@ -108,7 +103,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left font-medium text-stone-700 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2.5 transition-colors cursor-pointer"
             >
               <Sprout className="w-4 h-4 text-emerald-700" />
-              <span>My Farms & Plots</span>
+              <span>{t('profile.landHoldings')}</span>
             </button>
 
             <button
@@ -120,7 +115,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left font-medium text-stone-700 hover:bg-stone-50 hover:text-stone-900 flex items-center gap-2.5 transition-colors cursor-pointer"
             >
               <HelpCircle className="w-4 h-4 text-amber-700" />
-              <span>KVK Agronomist Desk</span>
+              <span>{t('nav.expertSupport')}</span>
             </button>
           </div>
 
@@ -135,7 +130,7 @@ export const UserMenu: React.FC<UserMenuProps> = ({
               className="w-full px-3 py-2 rounded-xl text-left font-bold text-red-700 hover:bg-red-50 flex items-center gap-2.5 transition-colors cursor-pointer"
             >
               <LogOut className="w-4 h-4 text-red-600" />
-              <span>Log Out (लॉग आउट)</span>
+              <span>{t('nav.logout')}</span>
             </button>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Phone, AlertCircle, Sparkles } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Phone, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useI18n } from '../../context/I18nContext';
 
 interface EmailLoginFormProps {
   onLogin: (payload: { email: string; password: string }) => Promise<{ success: boolean; message?: string }>;
@@ -21,6 +22,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
   isLoading,
   error,
 }) => {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,13 +34,13 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
     setLocalError('');
 
     if (!email || !password) {
-      setLocalError('Please enter both your email address and password.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
-      setLocalError('Please enter a valid email address.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
@@ -58,7 +60,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
         setLocalError(res.message);
       }
     } catch (e: any) {
-      setLocalError(e.message || 'Google sign in failed');
+      setLocalError(e.message || t('errors.generic'));
     } finally {
       setIsGoogleLoading(false);
     }
@@ -70,7 +72,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
         <div className="flex items-center gap-1.5 font-bold">
           <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-          <span>Firebase Cloud Authentication & Firestore</span>
+          <span>{t('auth.cloudSync')}</span>
         </div>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-emerald-800 border border-emerald-200">
           kisanai-8b20e
@@ -112,12 +114,12 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
               />
             </svg>
-            <span>{isGoogleLoading ? 'Connecting Google...' : 'Continue with Google'}</span>
+            <span>{isGoogleLoading ? t('common.loading') : t('auth.googleLogin')}</span>
           </button>
 
           <div className="relative flex py-3 items-center">
             <div className="flex-grow border-t border-stone-200"></div>
-            <span className="flex-shrink mx-3 text-stone-400 text-xs font-semibold uppercase">Or with email</span>
+            <span className="flex-shrink mx-3 text-stone-400 text-xs font-semibold uppercase">{t('common.or')}</span>
             <div className="flex-grow border-t border-stone-200"></div>
           </div>
         </div>
@@ -126,7 +128,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="email-input" className="block text-xs font-bold text-stone-700 mb-1.5">
-            Email Address (ईमेल)
+            {t('auth.email')}
           </label>
           <div className="relative flex items-center">
             <Mail className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -139,7 +141,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
                 setEmail(e.target.value);
                 if (localError) setLocalError('');
               }}
-              placeholder="e.g. farmer@kisan.ai"
+              placeholder="farmer@kisan.ai"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-emerald-700 bg-stone-50/50"
               disabled={isLoading}
             />
@@ -149,14 +151,14 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label htmlFor="password-input" className="block text-xs font-bold text-stone-700">
-              Password (पासवर्ड)
+              {t('auth.password')}
             </label>
             <button
               type="button"
               onClick={onSwitchToForgotPassword}
               className="text-xs text-emerald-700 hover:underline font-semibold cursor-pointer"
             >
-              Forgot password?
+              {t('auth.forgotPassword')}
             </button>
           </div>
           <div className="relative flex items-center">
@@ -170,7 +172,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
                 setPassword(e.target.value);
                 if (localError) setLocalError('');
               }}
-              placeholder="Enter your password"
+              placeholder="••••••••"
               className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-emerald-700 bg-stone-50/50"
               disabled={isLoading}
             />
@@ -195,7 +197,7 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
           disabled={!email || !password || isLoading}
           icon={<ArrowRight className="w-4 h-4" />}
         >
-          {isLoading ? 'Signing In...' : 'Sign In with Firebase'}
+          {isLoading ? t('common.loading') : t('auth.login')}
         </Button>
       </form>
 
@@ -210,19 +212,19 @@ export const EmailLoginForm: React.FC<EmailLoginFormProps> = ({
           onClick={onSwitchToPhone}
           icon={<Phone className="w-4 h-4 text-emerald-700" />}
         >
-          Use Mobile Number + OTP instead
+          {t('auth.phoneLogin')}
         </Button>
 
         <div className="text-center">
           <p className="text-xs text-stone-600">
-            Need an account?{' '}
+            {t('auth.dontHaveAccount')}{' '}
             <button
               id="switch-to-signup-from-login"
               type="button"
               onClick={onSwitchToSignup}
               className="text-emerald-700 font-bold hover:underline cursor-pointer"
             >
-              Register New Farm Account
+              {t('auth.register')}
             </button>
           </p>
         </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, KeyRound, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Sparkles } from 'lucide-react';
 import { Button } from '../ui/Button';
+import { useI18n } from '../../context/I18nContext';
 
 interface ForgotPasswordFormProps {
   onRequestReset: (email: string) => Promise<{ success: boolean; message?: string; demoOtpHint?: string }>;
@@ -17,6 +18,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   isLoading,
   error,
 }) => {
+  const { t } = useI18n();
   const [step, setStep] = useState<'request' | 'confirm'>('request');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
@@ -29,7 +31,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     e.preventDefault();
     setLocalError('');
     if (!email.trim()) {
-      setLocalError('Please enter your email address.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
@@ -47,12 +49,12 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     setLocalError('');
 
     if (!code || code.length !== 6) {
-      setLocalError('Please enter the 6-digit reset code.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     if (newPassword.length < 6) {
-      setLocalError('New password must be at least 6 characters long.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
@@ -71,9 +73,9 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           <CheckCircle2 className="w-8 h-8 text-emerald-700" />
         </div>
         <div className="space-y-1">
-          <h3 className="text-xl font-bold text-stone-900">Password Updated</h3>
+          <h3 className="text-xl font-bold text-stone-900">{t('auth.verifiedSuccess')}</h3>
           <p className="text-xs text-stone-600">
-            Your password has been changed successfully. You can now sign in with your new password.
+            {t('auth.verifiedSuccess')}
           </p>
         </div>
         <Button
@@ -84,7 +86,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           fullWidth
           onClick={onBackToLogin}
         >
-          Sign In Now
+          {t('auth.login')}
         </Button>
       </div>
     );
@@ -97,7 +99,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
           <div className="flex items-center gap-1.5 font-semibold">
             <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-            <span>Development Reset Code: {demoHint}</span>
+            <span>Reset Code: {demoHint}</span>
           </div>
           <button
             type="button"
@@ -120,7 +122,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         <form onSubmit={handleRequestSubmit} className="space-y-4">
           <div>
             <label htmlFor="forgot-email" className="block text-xs font-bold text-stone-700 mb-1.5">
-              Registered Email Address
+              {t('auth.email')}
             </label>
             <div className="relative flex items-center">
               <Mail className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -130,14 +132,11 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="e.g. farmer@kisan.ai"
+                placeholder="farmer@kisan.ai"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                 disabled={isLoading}
               />
             </div>
-            <p className="text-[11px] text-stone-500 mt-1">
-              We'll send a 6-digit recovery code to this email.
-            </p>
           </div>
 
           <Button
@@ -150,7 +149,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
             disabled={!email || isLoading}
             icon={<ArrowRight className="w-4 h-4" />}
           >
-            {isLoading ? 'Sending Code...' : 'Send Recovery Code'}
+            {isLoading ? t('common.loading') : t('auth.forgotPassword')}
           </Button>
         </form>
       ) : (
@@ -167,7 +166,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
                 maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
-                placeholder="Enter 6-digit code"
+                placeholder="123456"
                 className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-bold tracking-widest focus:outline-none focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                 disabled={isLoading}
               />
@@ -176,7 +175,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
           <div>
             <label htmlFor="new-password" className="block text-xs font-bold text-stone-700 mb-1.5">
-              Create New Password
+              {t('auth.password')}
             </label>
             <div className="relative flex items-center">
               <Lock className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -203,7 +202,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
             disabled={code.length !== 6 || newPassword.length < 6 || isLoading}
             icon={<ArrowRight className="w-4 h-4" />}
           >
-            {isLoading ? 'Updating Password...' : 'Reset & Save Password'}
+            {isLoading ? t('common.loading') : t('auth.forgotPassword')}
           </Button>
         </form>
       )}
@@ -216,7 +215,7 @@ export const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           className="text-xs text-stone-600 hover:text-stone-900 font-semibold flex items-center justify-center gap-1 mx-auto cursor-pointer"
         >
           <ArrowLeft className="w-3 h-3" />
-          Back to Sign In
+          {t('auth.login')}
         </button>
       </div>
     </div>

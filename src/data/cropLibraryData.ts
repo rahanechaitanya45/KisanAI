@@ -1,5 +1,10 @@
 import { CropInfo } from '../types/farming';
 
+import paddyImg from '../assets/images/regenerated_image_1787345683720.jpg';
+import cottonImg from '../assets/images/regenerated_image_1787345869316.jpg';
+import bananaImg from '../assets/images/regenerated_image_1787345871119.webp';
+import tomatoImg from '../assets/images/regenerated_image_1787345687120.webp';
+
 export const CROP_LIBRARY: CropInfo[] = [
   {
     id: 'paddy',
@@ -69,7 +74,7 @@ export const CROP_LIBRARY: CropInfo[] = [
       },
     ],
     harvestIndicators: '80-85% panicles turn golden yellow; grain moisture reaches 18-20%.',
-    imageUrl: 'https://images.unsplash.com/photo-1536617621972-602b1e4d6620?auto=format&fit=crop&w=800&q=80',
+    imageUrl: paddyImg,
     sourceDoc: 'ICAR - Indian Institute of Rice Research (IIRR) Package of Practices',
   },
   {
@@ -197,7 +202,7 @@ export const CROP_LIBRARY: CropInfo[] = [
       },
     ],
     harvestIndicators: 'Bolls burst open fully revealing white fluffy lint; harvest in 2-3 pickings on clear sunny days.',
-    imageUrl: 'https://images.unsplash.com/photo-1594488587121-6b8015c71b69?auto=format&fit=crop&w=800&q=80',
+    imageUrl: cottonImg,
     sourceDoc: 'ICAR - Central Institute for Cotton Research (CICR) Nagpur',
   },
   {
@@ -260,7 +265,7 @@ export const CROP_LIBRARY: CropInfo[] = [
       },
     ],
     harvestIndicators: 'Fingers become rounded (loss of prominent angles); floral remnants drop off easily.',
-    imageUrl: 'https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=800&q=80',
+    imageUrl: bananaImg,
     sourceDoc: 'ICAR - National Research Centre for Banana (NRCB) Tiruchirappalli',
   },
   {
@@ -385,7 +390,7 @@ export const CROP_LIBRARY: CropInfo[] = [
       },
     ],
     harvestIndicators: 'Fruits develop breaker/turning pinkish-red stage for transport or fully red for local markets.',
-    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&w=800&q=80',
+    imageUrl: tomatoImg,
     sourceDoc: 'ICAR - Indian Institute of Horticultural Research (IIHR) Bengaluru',
   },
   {

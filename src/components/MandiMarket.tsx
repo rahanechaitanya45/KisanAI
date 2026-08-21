@@ -5,13 +5,9 @@ import {
   Search,
   MapPin,
   Coins,
-  ShieldCheck,
-  Calendar,
   Sparkles,
   RefreshCw,
   BarChart3,
-  Filter,
-  CheckCircle2,
   AlertCircle,
   ExternalLink,
   MessageSquare,
@@ -24,6 +20,7 @@ import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
+import { useI18n } from '../context/I18nContext';
 
 interface MandiMarketProps {
   farmer: FarmerProfile;
@@ -31,6 +28,7 @@ interface MandiMarketProps {
 }
 
 export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab }) => {
+  const { t, lookupAgro } = useI18n();
   const [prices, setPrices] = useState<MandiRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -154,8 +152,8 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
     <div id="mandi-market-container" className="space-y-6 pb-14 animate-in fade-in duration-300">
       {/* Header with Live Agmarknet Badge */}
       <SectionHeader
-        title="APMC Mandi Intelligence & MSP Benchmarks"
-        subtitle={`Live wholesale arrival prices, government MSP parity, and crop market timing advisory for ${farmer.district || 'India'}, ${farmer.state || 'National'}`}
+        title={t('mandi.title')}
+        subtitle={t('mandi.subtitle')}
         badge={
           <Badge variant="primary" size="sm" className="bg-emerald-50 text-emerald-800 border-emerald-200">
             <Coins className="w-3.5 h-3.5 mr-1 text-emerald-700" />
@@ -173,7 +171,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
               className="bg-white border-stone-300 text-stone-700 hover:bg-stone-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${loading ? 'animate-spin text-emerald-600' : 'text-stone-500'}`} />
-              <span>{loading ? 'Updating...' : 'Sync Rates'}</span>
+              <span>{loading ? t('common.loading') : t('common.refresh')}</span>
             </Button>
             <a
               href="https://agmarknet.gov.in"
@@ -194,13 +192,13 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
           <Card variant="standard" padding="md" className="bg-white border-stone-200">
             <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">APMC Mandis</span>
             <p className="text-xl font-extrabold text-stone-900 mt-0.5">{summary.totalMandis} Active</p>
-            <span className="text-[11px] text-stone-500">{summary.statesCovered} States Monitored</span>
+            <span className="text-[11px] text-stone-500">{summary.statesCovered} States</span>
           </Card>
 
           <Card variant="standard" padding="md" className="bg-white border-stone-200">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Crops Covered</span>
+            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">{t('cropPlanner.activeCrop')}</span>
             <p className="text-xl font-extrabold text-stone-900 mt-0.5">{summary.commoditiesCovered} Varieties</p>
-            <span className="text-[11px] text-stone-500">Kharif & Rabi Categories</span>
+            <span className="text-[11px] text-stone-500">Kharif & Rabi</span>
           </Card>
 
           <Card variant="standard" padding="md" className="bg-white border-stone-200">
@@ -210,9 +208,9 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
           </Card>
 
           <Card variant="standard" padding="md" className="bg-white border-stone-200">
-            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Highest Arrival</span>
+            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">{t('mandi.arrivals')}</span>
             <p className="text-xl font-extrabold text-stone-900 mt-0.5 truncate">
-              {summary.topArrivals ? summary.topArrivals.commodity.split(' ')[0] : 'Wheat'}
+              {summary.topArrivals ? lookupAgro('crops', summary.topArrivals.commodity.split(' ')[0]) : 'Wheat'}
             </p>
             <span className="text-[11px] text-stone-500">
               {summary.topArrivals ? `${summary.topArrivals.arrivalQuantityTons || 0} MT Today` : 'Active trading'}
@@ -233,8 +231,8 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search crop, variety, or mandi name..."
-                className="agri-input pl-10 pr-4 py-2 text-xs sm:text-sm w-full bg-stone-50 border-stone-200 focus:bg-white"
+                placeholder={t('common.search')}
+                className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white"
               />
               {searchQuery && (
                 <button
@@ -252,11 +250,11 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                 id="mandi-state-select"
                 value={selectedState}
                 onChange={(e) => setSelectedState(e.target.value)}
-                className="agri-input text-xs font-semibold py-2 bg-stone-50 border-stone-200 focus:bg-white"
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-200 focus:bg-white"
               >
                 {statesList.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {s === 'All States' ? t('common.all') : s}
                   </option>
                 ))}
               </select>
@@ -265,11 +263,11 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                 id="mandi-commodity-select"
                 value={selectedCommodity}
                 onChange={(e) => setSelectedCommodity(e.target.value)}
-                className="agri-input text-xs font-semibold py-2 bg-stone-50 border-stone-200 focus:bg-white"
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-200 focus:bg-white"
               >
                 {commoditiesList.map((c) => (
                   <option key={c} value={c}>
-                    {c}
+                    {c === 'All Crops' ? t('common.all') : lookupAgro('crops', c)}
                   </option>
                 ))}
               </select>
@@ -278,7 +276,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                 id="mandi-sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="agri-input text-xs font-semibold py-2 bg-stone-50 border-stone-200 focus:bg-white"
+                className="px-3 py-2 rounded-xl text-xs font-semibold bg-stone-50 border border-stone-200 focus:bg-white"
               >
                 <option value="modalPriceDesc">Price: High to Low</option>
                 <option value="modalPriceAsc">Price: Low to High</option>
@@ -299,7 +297,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
               >
-                All Mandi Crops ({prices.length})
+                {t('common.all')} ({prices.length})
               </button>
               <button
                 onClick={() => setQuickFilter('my-crops')}
@@ -309,8 +307,8 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                     : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
                 }`}
               >
-                <span>My Farm Crops</span>
-                <span className="text-[10px] opacity-80">({farmerCropsList.join(', ')})</span>
+                <span>{t('cropPlanner.activeCrop')}</span>
+                <span className="text-[10px] opacity-80">({farmerCropsList.map(c => lookupAgro('crops', c)).join(', ')})</span>
               </button>
               <button
                 onClick={() => setQuickFilter('above-msp')}
@@ -332,23 +330,6 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
         </div>
       </Card>
 
-      {/* Loading Skeleton State */}
-      {loading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {[1, 2, 3, 4, 5, 6].map((idx) => (
-            <Card key={idx} variant="standard" padding="lg" className="animate-pulse space-y-4">
-              <div className="space-y-2">
-                <div className="h-3 w-28 bg-stone-200 rounded" />
-                <div className="h-5 w-44 bg-stone-300 rounded" />
-                <div className="h-3 w-36 bg-stone-200 rounded" />
-              </div>
-              <div className="h-20 bg-stone-100 rounded-xl" />
-              <div className="h-12 bg-amber-50 rounded-xl" />
-            </Card>
-          ))}
-        </div>
-      )}
-
       {/* Error Banner */}
       {!loading && error && (
         <Card variant="standard" padding="lg" className="bg-rose-50 border-rose-200 text-rose-900 space-y-3">
@@ -359,25 +340,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
           <p className="text-xs text-rose-800 leading-relaxed">{error}</p>
           <Button variant="primary" size="sm" onClick={fetchMandiData} className="bg-rose-700 hover:bg-rose-800 text-white">
             <RefreshCw className="w-3.5 h-3.5 mr-1" />
-            Retry Mandi Data Sync
-          </Button>
-        </Card>
-      )}
-
-      {/* Empty State */}
-      {!loading && !error && displayedPrices.length === 0 && (
-        <Card variant="standard" padding="xl" className="text-center py-12 space-y-4 bg-stone-50 border-dashed border-stone-300">
-          <div className="w-12 h-12 rounded-full bg-stone-200 text-stone-500 mx-auto flex items-center justify-center">
-            <Coins className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-stone-900">No Mandi records found</h3>
-            <p className="text-xs text-stone-600 mt-1 max-w-md mx-auto">
-              No market arrivals match your selected combination of state, commodity, and search keyword.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={resetFilters}>
-            Reset All Filters
+            {t('common.refresh')}
           </Button>
         </Card>
       )}
@@ -410,7 +373,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                         {item.state} • {item.district}
                       </span>
                       <h3 className="text-base font-black text-stone-900 mt-0.5">
-                        {item.commodity}
+                        {lookupAgro('crops', item.commodity)}
                       </h3>
                       <p className="text-xs font-semibold text-stone-600 flex items-center gap-1 mt-0.5">
                         <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
@@ -457,7 +420,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                     <div className="flex items-baseline justify-between">
                       <div>
                         <span className="text-[10px] text-stone-500 uppercase font-bold tracking-wider">
-                          Modal Rate (Wholesale)
+                          {t('mandi.modalPrice')}
                         </span>
                         <p className="text-2xl font-black text-stone-950 mt-0.5 tracking-tight">
                           ₹{modalRate.toLocaleString('en-IN')}
@@ -466,7 +429,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                       </div>
 
                       <div className="text-right text-xs">
-                        <span className="text-[10px] text-stone-500 font-semibold block">Govt MSP</span>
+                        <span className="text-[10px] text-stone-500 font-semibold block">{t('mandi.msp')}</span>
                         {hasMsp ? (
                           <>
                             <p className="font-extrabold text-stone-800">
@@ -481,18 +444,18 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                             </span>
                           </>
                         ) : (
-                          <span className="text-[10px] text-stone-500 italic">Market Determined</span>
+                          <span className="text-[10px] text-stone-500 italic">Market Rate</span>
                         )}
                       </div>
                     </div>
 
                     {/* Range Sub-bar */}
                     <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px] text-stone-600">
-                      <span>Min: <strong>₹{minRate.toLocaleString('en-IN')}</strong></span>
-                      <span>Max: <strong>₹{maxRate.toLocaleString('en-IN')}</strong></span>
+                      <span>{t('mandi.minPrice')}: <strong>₹{minRate.toLocaleString('en-IN')}</strong></span>
+                      <span>{t('mandi.maxPrice')}: <strong>₹{maxRate.toLocaleString('en-IN')}</strong></span>
                       {item.arrivalQuantityTons !== undefined && (
                         <span className="text-emerald-800 font-bold">
-                          Arrivals: {item.arrivalQuantityTons} MT
+                          {t('mandi.arrivals')}: {item.arrivalQuantityTons} MT
                         </span>
                       )}
                     </div>
@@ -516,11 +479,11 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                     <div className="space-y-2 pt-1">
                       <button
                         onClick={() => setExpandedCardId(isExpanded ? null : item.id)}
-                        className="w-full flex items-center justify-between text-[11px] font-bold text-emerald-800 hover:text-emerald-950 transition py-1"
+                        className="w-full flex items-center justify-between text-[11px] font-bold text-emerald-800 hover:text-emerald-950 transition py-1 cursor-pointer"
                       >
                         <span className="flex items-center gap-1">
                           <BarChart3 className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>{isExpanded ? 'Hide 7-Day Price Trend' : 'View 7-Day Price History'}</span>
+                          <span>{isExpanded ? 'Hide Trend' : t('mandi.trends')}</span>
                         </span>
                         {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                       </button>
@@ -528,7 +491,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                       {isExpanded && (
                         <div className="p-3 bg-stone-50 border border-stone-200 rounded-xl space-y-2 animate-in fade-in">
                           <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider block">
-                            Recent 7-Day Modal Rate Trajectory
+                            Recent 7-Day Trajectory
                           </span>
                           <div className="grid grid-cols-7 gap-1 text-center">
                             {item.history.map((h, i) => (
@@ -566,7 +529,7 @@ export const MandiMarket: React.FC<MandiMarketProps> = ({ farmer, onNavigateTab 
                     className="text-emerald-900 border-emerald-300 hover:bg-emerald-50 text-[11px] font-bold"
                   >
                     <MessageSquare className="w-3 h-3 mr-1 text-emerald-700" />
-                    <span>Ask AI Price Strategy</span>
+                    <span>{t('chat.placeholder')}</span>
                   </Button>
                 </div>
               </Card>

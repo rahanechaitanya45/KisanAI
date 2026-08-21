@@ -2,14 +2,9 @@ import React, { useState } from 'react';
 import {
   Calendar as CalendarIcon,
   CheckCircle2,
-  Clock,
   Plus,
-  AlertTriangle,
-  Droplets,
   Sprout,
   ShieldAlert,
-  ChevronRight,
-  Sun,
   Camera,
   X,
 } from 'lucide-react';
@@ -20,12 +15,12 @@ import {
   WeatherContext,
   CropGrowthStage,
 } from '../types/farming';
-import { getTranslation } from '../data/i18n';
 import confetti from 'canvas-confetti';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
+import { useI18n } from '../context/I18nContext';
 
 interface CropCalendarProps {
   farmer: FarmerProfile;
@@ -96,6 +91,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
   onAddTask,
   onNavigateTab,
 }) => {
+  const { t, lookupAgro } = useI18n();
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
@@ -105,7 +101,6 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
   const [newTaskPriority, setNewTaskPriority] = useState<'Normal' | 'High' | 'Urgent'>('Normal');
 
   const currentCrop = selectedPlot?.currentCropSeason;
-  const lang = farmer.preferredLanguage;
 
   const handleCreateTask = (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,12 +133,12 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header */}
       <SectionHeader
-        title="Crop Lifecycle & Task Calendar"
-        subtitle={`${selectedPlot?.name} • ${currentCrop?.cropName} (${currentCrop?.variety}) • Sown on ${currentCrop?.sowingDate}`}
+        title={t('calendar.title')}
+        subtitle={`${selectedPlot?.name} • ${currentCrop?.cropName ? lookupAgro('crops', currentCrop.cropName) : ''} (${currentCrop?.variety || ''}) • ${t('cropPlanner.sowingDate')}: ${currentCrop?.sowingDate || ''}`}
         badge={
           <Badge variant="primary" size="sm">
             <CalendarIcon className="w-3.5 h-3.5 mr-1" />
-            Dynamic Agronomic Schedule
+            {t('calendar.title')}
           </Badge>
         }
         action={
@@ -153,7 +148,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
             leftIcon={<Plus className="w-4 h-4" />}
             onClick={() => setShowAddModal(true)}
           >
-            Add Field Task
+            {t('calendar.addTask')}
           </Button>
         }
       />
@@ -164,11 +159,10 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
           <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
           <div>
             <p className="font-extrabold text-amber-900">
-              Weather Caution: {weather.current.precipitationChancePercent}% Chance of Rain in{' '}
-              {farmer.district}
+              {t('weather.cautionRain', { rain: weather.current.precipitationChancePercent, district: farmer.district })}
             </p>
             <p className="text-amber-800 mt-0.5 leading-relaxed">
-              Foliar sprayings and nitrogen top-dressings should be postponed to avoid nutrient wash-off. Hold field irrigations for the next 24-48 hours.
+              {t('weather.rainAdvisory')}
             </p>
           </div>
         </div>
@@ -182,7 +176,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <h2 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
                 <Sprout className="w-4 h-4 text-emerald-700" />
-                <span>Growth Stages & Agronomic Timeline</span>
+                <span>{t('calendar.growthStages')}</span>
               </h2>
               <Badge variant="neutral" size="sm">
                 ICAR Phenology
@@ -219,7 +213,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
                     >
                       <div className="flex items-center justify-between">
                         <h4 className="text-xs font-extrabold text-stone-900">
-                          {item.stage}
+                          {lookupAgro('growthStages', item.stage)}
                         </h4>
                         <span className="text-[10px] font-semibold text-stone-500">
                           {item.dasRange}
@@ -230,7 +224,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
                       </p>
                       {isCurrent && (
                         <span className="inline-block mt-2 px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-800 text-white uppercase tracking-wider">
-                          ★ Active Crop Stage
+                          ★ {t('cropPlanner.activeCrop')}
                         </span>
                       )}
                     </div>
@@ -247,13 +241,13 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
             <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <h2 className="text-sm font-extrabold text-stone-900 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                <span>Pending Stage Operations ({tasks.filter((t) => !t.completed).length})</span>
+                <span>{t('calendar.pendingTasks')} ({tasks.filter((t) => !t.completed).length})</span>
               </h2>
               <button
                 onClick={() => onNavigateTab('diary')}
                 className="text-xs text-emerald-800 font-bold hover:underline cursor-pointer"
               >
-                Log in Farm Diary →
+                {t('nav.farmDiary')} →
               </button>
             </div>
 
@@ -280,7 +274,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
                     <p className="text-xs text-stone-600 leading-snug">{task.description}</p>
                     {task.whyExplanation && (
                       <p className="text-[11px] text-amber-900 font-medium pt-0.5">
-                        💡 <em>Why: {task.whyExplanation}</em>
+                        💡 <em>{task.whyExplanation}</em>
                       </p>
                     )}
                   </div>
@@ -290,20 +284,20 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
                     size="sm"
                     onClick={() => handleTaskClick(task.id)}
                   >
-                    {task.completed ? 'Done' : 'Complete'}
+                    {task.completed ? t('common.completed') : t('common.markComplete')}
                   </Button>
                 </div>
               ))}
             </div>
 
             <div className="pt-3 border-t border-stone-200 flex items-center justify-between text-xs text-stone-500">
-              <span>Automatic dynamic adjustments based on weather</span>
+              <span>{t('dashboard.sprayAdvisory')}</span>
               <button
                 onClick={() => onNavigateTab('scanner')}
                 className="text-emerald-800 font-bold hover:underline flex items-center gap-1 cursor-pointer"
               >
                 <Camera className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Diagnose Leaf Pest</span>
+                <span>{t('nav.leafDoctor')}</span>
               </button>
             </div>
           </Card>
@@ -315,7 +309,7 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
         <div className="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
           <Card variant="standard" padding="lg" className="max-w-md w-full shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-stone-200 pb-3">
-              <h3 className="text-base font-extrabold text-stone-900">Add Field Task</h3>
+              <h3 className="text-base font-extrabold text-stone-900">{t('calendar.addTask')}</h3>
               <button
                 onClick={() => setShowAddModal(false)}
                 className="p-1 text-stone-400 hover:text-stone-700 cursor-pointer"
@@ -326,55 +320,55 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
 
             <form onSubmit={handleCreateTask} className="space-y-3.5 text-xs">
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Task Title</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('calendar.taskTitle')}</label>
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Second dose of Urea @ 30kg/acre"
+                  placeholder="Urea @ 30kg/acre"
                   value={newTaskTitle}
                   onChange={(e) => setNewTaskTitle(e.target.value)}
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Description / Dosage</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('calendar.taskDesc')}</label>
                 <textarea
-                  placeholder="Specific field instructions or bio-pesticide recipe..."
+                  placeholder="Instructions or recipe..."
                   value={newTaskDesc}
                   onChange={(e) => setNewTaskDesc(e.target.value)}
                   rows={2}
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-bold text-stone-700 block mb-1">Category</label>
+                  <label className="font-bold text-stone-700 block mb-1">{t('calendar.taskCategory')}</label>
                   <select
                     value={newTaskCategory}
                     onChange={(e) => setNewTaskCategory(e.target.value as any)}
-                    className="agri-input text-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                   >
-                    <option value="Fertigation">Fertigation / Nutrition</option>
-                    <option value="Spraying">Pest Spraying</option>
+                    <option value="Fertigation">Fertigation</option>
+                    <option value="Spraying">Spraying</option>
                     <option value="Irrigation">Irrigation</option>
-                    <option value="Weeding">Weeding / Interculture</option>
-                    <option value="Scouting">Crop Scouting</option>
+                    <option value="Weeding">Weeding</option>
+                    <option value="Scouting">Scouting</option>
                     <option value="Harvesting">Harvesting</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="font-bold text-stone-700 block mb-1">Priority</label>
+                  <label className="font-bold text-stone-700 block mb-1">{t('calendar.priority')}</label>
                   <select
                     value={newTaskPriority}
                     onChange={(e) => setNewTaskPriority(e.target.value as any)}
-                    className="agri-input text-xs"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                   >
-                    <option value="Normal">Normal</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent (Do Today)</option>
+                    <option value="Normal">{t('calendar.normal')}</option>
+                    <option value="High">{t('calendar.high')}</option>
+                    <option value="Urgent">{t('calendar.urgent')}</option>
                   </select>
                 </div>
               </div>
@@ -386,10 +380,10 @@ export const CropCalendar: React.FC<CropCalendarProps> = ({
                   type="button"
                   onClick={() => setShowAddModal(false)}
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button variant="primary" size="sm" type="submit">
-                  Save Task
+                  {t('common.save')}
                 </Button>
               </div>
             </form>

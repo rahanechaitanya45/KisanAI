@@ -7,22 +7,16 @@ import {
   Volume2,
   VolumeX,
   Camera,
-  RotateCcw,
   User,
   Bot,
   X,
   PhoneCall,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
   Search,
-  MessageSquare,
   Plus,
-  Clock,
   History,
   Copy,
   Check,
-  ChevronRight,
+  ExternalLink,
   RefreshCw,
 } from 'lucide-react';
 import {
@@ -32,12 +26,12 @@ import {
   WeatherContext,
   ChatMessage,
   ChatSession,
-  GroundingSource,
 } from '../types/farming';
-import { getTranslation } from '../data/i18n';
+import { useI18n } from '../context/I18nContext';
 import { askKisanAI, transcribeAudioWithGemini } from '../services/aiService';
 import { voiceAssistant } from '../services/voiceService';
 import { firestoreService } from '../services/firestoreService';
+import { auth } from '../lib/firebase';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 
@@ -60,9 +54,13 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
   onClearInitialQuery,
   onNavigateTab,
 }) => {
+  const { t, language, lookupAgro } = useI18n();
   const currentCrop = selectedPlot?.currentCropSeason;
-  const lang = farmer.preferredLanguage || 'en';
   const userId = farmer.userId || farmer.id || 'anonymous';
+
+  const localizedCrop = currentCrop?.cropName ? lookupAgro('crops', currentCrop.cropName) : t('common.noData');
+  const localizedStage = currentCrop?.currentStage ? lookupAgro('growthStages', currentCrop.currentStage) : t('common.active');
+  const localizedSoil = selectedPlot?.soil?.soilType ? lookupAgro('soilTypes', selectedPlot.soil.soilType) : t('common.noData');
 
   // Active chat session ID
   const [activeSessionId, setActiveSessionId] = useState<string>(() => 'session-' + Date.now());
@@ -73,28 +71,8 @@ export const ChatAssistant: React.FC<ChatAssistantProps> = ({
     id: 'msg-welcome',
     sessionId: activeSessionId,
     sender: 'assistant',
-    text: `Namaste **${farmer.name}**! I am **KisanAI (किसान मित्र)**, your personal agronomy and precision farming companion.
-
-I am actively tracking your field: **${selectedPlot?.name || 'Main Plot'}** in **${farmer.district}, ${farmer.state}**.
-• **Crop & Variety:** ${currentCrop?.cropName || 'Paddy'} (${currentCrop?.variety || 'Certified Variety'})
-• **Phenological Stage:** ${currentCrop?.currentStage || 'Vegetative'}
-• **Soil Test:** pH ${selectedPlot?.soil?.ph || '7.0'} (${selectedPlot?.soil?.soilType || 'Alluvial/Black'})
-• **Weather Advisory:** ${weather.current.temperatureC}°C, ${weather.current.precipitationChancePercent}% rain chance (${weather.current.description}).
-
-Ask me any question about fertilizer schedules, IPM pest control, weather precautions, APMC Mandi rates, or government subsidies. You can also tap the **microphone 🎙️** to speak in your regional language or attach a **crop photo 📸**!`,
+    text: t('chat.welcomeGreeting') || `Hello! How can I help with your farm today?`,
     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    groundingSources: [
-      {
-        title: 'ICAR National Agricultural Advisory Portal',
-        uri: 'https://icar.org.in',
-        sourceType: 'icar',
-      },
-      {
-        title: `${farmer.district} Krishi Vigyan Kendra`,
-        uri: 'https://kvk.icar.gov.in',
-        sourceType: 'icar',
-      },
-    ],
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>([initialWelcomeMessage]);
@@ -114,7 +92,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
 
   // Subscribe to chat sessions from Firestore
   useEffect(() => {
-    if (!userId || userId === 'anonymous') return;
+    if (!auth.currentUser || !userId || userId === 'anonymous' || userId.startsWith('demo-') || userId.startsWith('farmer-')) return;
     const unsub = firestoreService.subscribeChatSessions(userId, (sessions) => {
       if (sessions && sessions.length > 0) {
         setSavedSessions(sessions);
@@ -125,7 +103,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
 
   // Subscribe to messages in current session from Firestore
   useEffect(() => {
-    if (!activeSessionId || !userId || userId === 'anonymous') return;
+    if (!auth.currentUser || !activeSessionId || !userId || userId === 'anonymous' || userId.startsWith('demo-') || userId.startsWith('farmer-')) return;
     const unsub = firestoreService.subscribeChatMessages(activeSessionId, (remoteMsgs) => {
       if (remoteMsgs && remoteMsgs.length > 0) {
         setMessages(remoteMsgs);
@@ -178,8 +156,8 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
       const newSession: ChatSession = {
         id: newSessionId,
         userId,
-        title: `Chat on ${currentCrop?.cropName || 'Farming'} (${new Date().toLocaleDateString()})`,
-        lastMessage: 'New conversation started',
+        title: `${t('chat.newConversation')} - ${localizedCrop} (${new Date().toLocaleDateString()})`,
+        lastMessage: t('chat.newConversation'),
         cropContext: currentCrop?.cropName || 'General',
         plotName: selectedPlot?.name || 'Main Plot',
         createdAt: new Date().toISOString(),
@@ -237,7 +215,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
       const result = await askKisanAI(
         query,
         contextPayload,
-        lang,
+        language,
         historyContext,
         currentImg
       );
@@ -263,7 +241,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
         id: 'msg-err-' + Date.now(),
         sessionId: activeSessionId,
         sender: 'assistant',
-        text: `⚠️ **Agronomic Guidance (Offline Protocol):** For ${currentCrop?.cropName || 'your crop'} at ${currentCrop?.currentStage || 'current stage'}, maintain balanced N-P-K nutrition and inspect lower foliage for fungal spots. Call KVK Toll-Free **1800-180-1551** for localized consultation.`,
+        text: `⚠️ ${t('errors.aiUnavailable')} KVK Helpline: 1800-180-1551`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
@@ -296,7 +274,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
           const base64Audio = reader.result as string;
           setIsLoading(true);
           try {
-            const transcript = await transcribeAudioWithGemini(base64Audio, lang, 'audio/webm');
+            const transcript = await transcribeAudioWithGemini(base64Audio, language, 'audio/webm');
             if (transcript && transcript.trim()) {
               setInputMessage(transcript);
               handleSendMessage(transcript);
@@ -315,7 +293,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
 
       // Start Web Speech API as parallel real-time transcription
       voiceAssistant.startListening(
-        lang,
+        language,
         (liveTranscript) => {
           setInputMessage(liveTranscript);
         },
@@ -327,7 +305,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
       // Fallback to Web Speech API
       setIsRecording(true);
       voiceAssistant.startListening(
-        lang,
+        language,
         (transcript) => {
           setIsRecording(false);
           setInputMessage(transcript);
@@ -366,7 +344,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
       setSpeakingMsgId(null);
     } else {
       setSpeakingMsgId(msgId);
-      voiceAssistant.speak(text, lang, () => {
+      voiceAssistant.speak(text, language, () => {
         setSpeakingMsgId(null);
       });
     }
@@ -390,12 +368,10 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
   };
 
   const suggestedQuestions = [
-    `Recommended fertilizer dosage for ${currentCrop?.cropName || 'my crop'} at ${currentCrop?.currentStage || 'current stage'}?`,
-    'Is rainfall expected before my planned foliar spray?',
-    'Why are lower leaf tips turning pale yellow?',
-    'Which biological IPM bio-agent works best against stem borers?',
-    `Current APMC Mandi modal price for ${currentCrop?.cropName || 'Paddy'} in ${farmer.state}?`,
-    'How do I apply for PM-KISAN or PMFBY crop insurance subsidy?',
+    t('chat.suggested1', { crop: localizedCrop }),
+    t('chat.suggested2', { stage: localizedStage }),
+    t('chat.suggested3'),
+    t('chat.suggested4', { crop: localizedCrop }),
   ];
 
   return (
@@ -409,14 +385,14 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-extrabold text-base text-stone-900 leading-tight">
-                KisanAI Precision Agronomy Assistant
+                {t('nav.krishiMitra')}
               </h2>
               <Badge variant="primary" size="sm">
                 Gemini 3.7 Flash Grounded
               </Badge>
             </div>
             <p className="text-xs text-stone-500 font-medium">
-              Multilingual ICAR Package of Practice, Live Mandi & Weather Grounded
+              {t('chat.groundedSources')}
             </p>
           </div>
         </div>
@@ -427,10 +403,10 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
               variant="outline"
               size="sm"
               onClick={() => setShowSessionDrawer(!showSessionDrawer)}
-              title="View Previous Chats"
+              title={t('chat.history')}
             >
               <History className="w-3.5 h-3.5 mr-1 text-stone-600" />
-              <span>History ({savedSessions.length})</span>
+              <span>{t('chat.history')} ({savedSessions.length})</span>
             </Button>
           )}
 
@@ -438,10 +414,10 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             variant="ghost"
             size="sm"
             onClick={handleStartNewSession}
-            title="Start New Conversation"
+            title={t('chat.newConversation')}
           >
             <Plus className="w-4 h-4 mr-1 text-emerald-700" />
-            <span>New Chat</span>
+            <span>{t('chat.newConversation')}</span>
           </Button>
 
           <Button
@@ -450,7 +426,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             onClick={() => onNavigateTab('expert')}
           >
             <PhoneCall className="w-3.5 h-3.5 mr-1 text-emerald-700" />
-            <span>KVK Escalation</span>
+            <span>{t('nav.expertSupport')}</span>
           </Button>
         </div>
       </div>
@@ -459,29 +435,29 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
       <div className="bg-emerald-50/70 border-b border-emerald-100 px-5 py-2 flex flex-wrap items-center justify-between gap-2 text-xs text-emerald-950 shrink-0 font-medium">
         <div className="flex flex-wrap items-center gap-2">
           <span>
-            <strong>Farm:</strong> {selectedFarm.name} ({selectedPlot?.name})
+            <strong>{t('profile.farmName')}:</strong> {selectedFarm.name} ({selectedPlot?.name})
           </span>
           <span className="text-emerald-300">•</span>
           <span>
-            <strong>Crop:</strong> {currentCrop?.cropName} ({currentCrop?.variety})
+            <strong>{t('onboarding.currentCrop')}:</strong> {localizedCrop} ({currentCrop?.variety || 'Certified'})
           </span>
           <span className="text-emerald-300">•</span>
           <span>
-            <strong>Stage:</strong> {currentCrop?.currentStage}
+            <strong>{t('dashboard.cropGrowthStage')}:</strong> {localizedStage}
           </span>
           <span className="text-emerald-300">•</span>
           <span>
-            <strong>Location:</strong> {farmer.district}, {farmer.state}
+            <strong>{t('weather.title')}:</strong> {farmer.district}, {farmer.state}
           </span>
           <span className="text-emerald-300">•</span>
           <span>
-            <strong>Soil:</strong> pH {selectedPlot?.soil?.ph || '7.0'} ({selectedPlot?.soil?.soilType || 'Alluvial'})
+            <strong>{t('soil.title')}:</strong> pH {selectedPlot?.soil?.ph || '7.0'} ({localizedSoil})
           </span>
         </div>
 
         <span className="text-[11px] text-emerald-800 font-semibold bg-emerald-100 px-2.5 py-0.5 rounded-full flex items-center gap-1">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-          Field-Aware Context Active
+          {t('common.verified')}
         </span>
       </div>
 
@@ -534,7 +510,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                 <div className="mt-3 pt-2.5 border-t border-stone-100 space-y-1.5">
                   <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider flex items-center gap-1">
                     <Search className="w-3 h-3 text-emerald-700" />
-                    Verified Grounding Sources:
+                    {t('chat.groundedSources')}
                   </span>
                   <div className="flex flex-wrap gap-1.5">
                     {msg.groundingSources.map((source, sIdx) => (
@@ -568,12 +544,12 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                       {speakingMsgId === msg.id ? (
                         <>
                           <VolumeX className="w-3.5 h-3.5 text-amber-700" />
-                          <span>Stop Voice</span>
+                          <span>{t('chat.stopAudio')}</span>
                         </>
                       ) : (
                         <>
                           <Volume2 className="w-3.5 h-3.5 text-emerald-700" />
-                          <span>Listen ({lang})</span>
+                          <span>{t('chat.speakAnswer')}</span>
                         </>
                       )}
                     </button>
@@ -581,7 +557,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                     <button
                       onClick={() => handleCopyText(msg.id, msg.text)}
                       className="p-1 text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-                      title="Copy Advisory Text"
+                      title={t('chat.copy')}
                     >
                       {copiedMsgId === msg.id ? (
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
@@ -614,7 +590,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             <div className="bg-white border border-stone-200 rounded-2xl rounded-tl-none p-4 shadow-xs text-xs text-stone-600 flex items-center gap-2.5">
               <RefreshCw className="w-4 h-4 text-emerald-700 animate-spin" />
               <span className="font-semibold text-emerald-900">
-                Grounding with ICAR packages, soil pH {selectedPlot?.soil?.ph || '7.0'}, and regional mandi rates...
+                {t('chat.thinking')}
               </span>
             </div>
           </div>
@@ -629,7 +605,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
           <div className="p-4 border-b border-stone-200 flex items-center justify-between bg-stone-50">
             <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
               <History className="w-4 h-4 text-emerald-700" />
-              Saved Chat Sessions
+              {t('chat.history')}
             </h3>
             <button
               onClick={() => setShowSessionDrawer(false)}
@@ -659,7 +635,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                   </span>
                 </div>
                 <p className="text-[11px] text-stone-500 line-clamp-1">
-                  {session.lastMessage || 'Farming advisory conversation'}
+                  {session.lastMessage || t('chat.newConversation')}
                 </p>
               </div>
             ))}
@@ -673,7 +649,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
               onClick={handleStartNewSession}
             >
               <Plus className="w-4 h-4 mr-1" />
-              Start New Chat
+              {t('chat.newConversation')}
             </Button>
           </div>
         </div>
@@ -685,7 +661,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
           <div className="flex items-center gap-2.5">
             <span className="w-3 h-3 rounded-full bg-rose-600 animate-ping" />
             <span className="font-bold">
-              Recording in {lang} ({recordingSeconds}s)... Speak your farming query clearly.
+              {t('chat.voiceRecording', { seconds: recordingSeconds })}
             </span>
           </div>
           <Button
@@ -693,7 +669,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             size="sm"
             onClick={handleToggleVoice}
           >
-            Done Speaking
+            {t('common.stopRecording')}
           </Button>
         </div>
       )}
@@ -703,7 +679,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
         {/* Suggested Quick Questions */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
           <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider shrink-0 mr-1">
-            Suggested:
+            {t('chat.suggestedTitle', { crop: localizedCrop })}:
           </span>
           {suggestedQuestions.map((q, idx) => (
             <button
@@ -721,8 +697,8 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
           <div className="flex items-center gap-2 p-2 bg-emerald-50 rounded-xl border border-emerald-200 w-fit animate-in fade-in">
             <img src={attachedImage} alt="Crop" className="w-12 h-12 rounded-lg object-cover" />
             <div className="text-xs">
-              <p className="font-bold text-emerald-950">Crop / Leaf Photo Attached</p>
-              <p className="text-[11px] text-emerald-700">Will be analyzed by Gemini Vision</p>
+              <p className="font-bold text-emerald-950">{t('scanner.uploadCropPhoto')}</p>
+              <p className="text-[11px] text-emerald-700">{t('scanner.analyzingPlant')}</p>
             </div>
             <button
               onClick={() => setAttachedImage(null)}
@@ -740,7 +716,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             type="button"
             onClick={() => fileInputRef.current?.click()}
             className="p-2.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-200 transition-colors cursor-pointer"
-            title="Attach Leaf or Pest Photo"
+            title={t('scanner.uploadCropPhoto')}
           >
             <Camera className="w-5 h-5 text-emerald-800" />
           </button>
@@ -764,7 +740,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                   handleSendMessage();
                 }
               }}
-              placeholder={getTranslation(lang, 'askQuestionPlaceholder')}
+              placeholder={t('chat.inputPlaceholder')}
               className="agri-input pl-3.5 pr-10 py-2.5 text-xs sm:text-sm"
             />
           </div>
@@ -778,7 +754,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
                 ? 'bg-rose-600 text-white animate-bounce ring-4 ring-rose-200'
                 : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
             }`}
-            title="Voice input in your mother tongue"
+            title={t('common.tapToSpeak')}
           >
             {isRecording ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
           </button>
@@ -791,7 +767,7 @@ Ask me any question about fertilizer schedules, IPM pest control, weather precau
             onClick={() => handleSendMessage()}
             disabled={isLoading || (!inputMessage.trim() && !attachedImage)}
           >
-            <span>{getTranslation(lang, 'send')}</span>
+            <span>{t('chat.send')}</span>
           </Button>
         </div>
       </div>

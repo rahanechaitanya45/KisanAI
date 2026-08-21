@@ -8,8 +8,6 @@ import {
   ChevronDown,
   ShieldCheck,
   Building2,
-  PhoneCall,
-  Check,
   Plus,
   Home,
   Camera,
@@ -24,9 +22,9 @@ import {
 } from 'lucide-react';
 import { FarmerProfile, LanguageCode, Farm, FarmPlot } from '../types/farming';
 import { AuthUser } from '../types/auth';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../data/i18n';
 import { DEMO_FARMERS } from '../data/demoFarmers';
 import { UserMenu } from './auth/UserMenu';
+import { useI18n } from '../context/I18nContext';
 
 interface HeaderProps {
   farmer: FarmerProfile;
@@ -61,32 +59,32 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout,
   isOnline,
 }) => {
+  const { t, language, setLanguage, supportedLanguages, lookupAgro } = useI18n();
   const [showLangMenu, setShowLangMenu] = useState(false);
   const [showDemoMenu, setShowDemoMenu] = useState(false);
   const [showFarmMenu, setShowFarmMenu] = useState(false);
 
   const currentLang =
-    SUPPORTED_LANGUAGES.find((l) => l.code === farmer.preferredLanguage) ||
-    SUPPORTED_LANGUAGES[0];
+    supportedLanguages.find((l) => l.code === language) || supportedLanguages[0];
 
   const navItems = [
-    { id: 'dashboard', label: getTranslation(farmer.preferredLanguage, 'todaySummary'), icon: Home },
-    { id: 'chat', label: 'AI Assistant', icon: Sparkles, highlight: true },
-    { id: 'scanner', label: getTranslation(farmer.preferredLanguage, 'takePhoto'), icon: Camera },
-    { id: 'planner', label: getTranslation(farmer.preferredLanguage, 'cropPlanner'), icon: Sprout },
-    { id: 'calendar', label: getTranslation(farmer.preferredLanguage, 'cropCalendar'), icon: Calendar },
-    { id: 'diary', label: getTranslation(farmer.preferredLanguage, 'farmDiary'), icon: FileText },
-    { id: 'soil', label: getTranslation(farmer.preferredLanguage, 'soilHealth'), icon: Layers },
-    { id: 'mandi', label: getTranslation(farmer.preferredLanguage, 'mandiMarket'), icon: DollarSign },
-    { id: 'schemes', label: getTranslation(farmer.preferredLanguage, 'govSchemes'), icon: Landmark },
-    { id: 'library', label: getTranslation(farmer.preferredLanguage, 'cropLibrary'), icon: BookOpen },
-    { id: 'expert', label: getTranslation(farmer.preferredLanguage, 'expertEscalation'), icon: UserCheck, isExpert: true },
-    { id: 'profile', label: 'My Profile', icon: User },
+    { id: 'dashboard', label: t('nav.home'), icon: Home },
+    { id: 'chat', label: t('nav.aiAssistant'), icon: Sparkles, highlight: true },
+    { id: 'scanner', label: t('nav.cropHealth'), icon: Camera },
+    { id: 'planner', label: t('nav.cropPlanner'), icon: Sprout },
+    { id: 'calendar', label: t('nav.cropCalendar'), icon: Calendar },
+    { id: 'diary', label: t('nav.farmDiary'), icon: FileText },
+    { id: 'soil', label: t('nav.soilHealth'), icon: Layers },
+    { id: 'mandi', label: t('nav.mandiMarket'), icon: DollarSign },
+    { id: 'schemes', label: t('nav.govSchemes'), icon: Landmark },
+    { id: 'library', label: t('nav.cropLibrary'), icon: BookOpen },
+    { id: 'expert', label: t('nav.expertSupport'), icon: UserCheck, isExpert: true },
+    { id: 'profile', label: t('nav.profile'), icon: User },
   ];
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-stone-200/80 shadow-[0_1px_3px_0_rgba(0,0,0,0.02)]">
-      {/* Top Application Bar - Light Aesthetic */}
+      {/* Top Application Bar */}
       <div className="bg-[#fcfdfa] border-b border-stone-200/70 text-stone-800">
         <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
           {/* Brand Identity */}
@@ -102,15 +100,21 @@ export const Header: React.FC<HeaderProps> = ({
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-extrabold text-lg sm:text-xl tracking-tight text-stone-900 flex items-center group-hover:text-emerald-950 transition-colors">
-                    Kisan<span className="text-emerald-700 font-black group-hover:text-emerald-600 transition-colors">AI</span>
+                    {t('app.name')}
                   </span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 hidden sm:inline-flex items-center gap-1 group-hover:bg-emerald-100 transition-colors">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    ICAR & KVK Integrated
+                    ICAR & KVK
                   </span>
+                  {!isOnline && (
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      {t('common.offline')}
+                    </span>
+                  )}
                 </div>
                 <p className="text-[11px] text-stone-500 hidden sm:block font-medium">
-                  {getTranslation(farmer.preferredLanguage, 'appTagline')}
+                  {t('app.tagline')}
                 </p>
               </div>
             </button>
@@ -132,7 +136,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
                 <div className="text-left leading-tight">
                   <p className="text-[10px] text-stone-400 font-medium">
-                    {selectedFarm?.name || 'My Farm'}
+                    {selectedFarm?.name || t('nav.switchFarm')}
                   </p>
                   <p className="text-xs font-bold text-stone-800 truncate max-w-[110px] sm:max-w-[140px]">
                     {selectedPlot?.name || 'Main Plot'}
@@ -145,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 mt-2 w-72 bg-white text-stone-900 rounded-2xl shadow-xl border border-stone-200 py-2 z-50 animate-in fade-in slide-in-from-top-1">
                   <div className="px-3.5 py-1.5 border-b border-stone-100 flex items-center justify-between">
                     <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                      Farms & Plots
+                      {t('profile.landHoldings')}
                     </span>
                     <button
                       onClick={() => {
@@ -155,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="text-xs text-emerald-700 font-bold hover:underline flex items-center gap-0.5 cursor-pointer"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Add Plot
+                      {t('nav.addPlot')}
                     </button>
                   </div>
                   <div className="max-h-64 overflow-y-auto p-1.5 space-y-1">
@@ -184,10 +188,12 @@ export const Header: React.FC<HeaderProps> = ({
                             >
                               <span className="flex items-center gap-1.5">
                                 <span className="text-emerald-700">🌱</span>
-                                <span>{plot.name} ({plot.areaAcres} ac)</span>
+                                <span>{plot.name} ({plot.areaAcres} {t('common.acre')})</span>
                               </span>
                               <span className="text-[11px] text-stone-500">
-                                {plot.currentCropSeason?.cropName || 'Empty'}
+                                {plot.currentCropSeason?.cropName
+                                  ? lookupAgro('crops', plot.currentCropSeason.cropName)
+                                  : t('common.noData')}
                               </span>
                             </button>
                           ))}
@@ -199,7 +205,7 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Language Selector */}
+            {/* Language Selector Dropdown */}
             <div className="relative">
               <button
                 id="lang-selector-btn"
@@ -208,38 +214,37 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowFarmMenu(false);
                   setShowDemoMenu(false);
                 }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-stone-50 border border-stone-200/90 text-stone-800 text-xs font-semibold transition-all shadow-xs cursor-pointer"
-                title="Select language / भाषा चुनें (13 Indian Languages)"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-200 text-emerald-950 text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                title={t('profile.selectLanguage')}
               >
                 <Globe className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
-                <span className="font-semibold text-stone-800">{currentLang.nativeLabel}</span>
-                <ChevronDown className="w-3 h-3 text-stone-400 shrink-0" />
+                <span className="font-bold text-emerald-950">{currentLang.nativeName}</span>
+                <ChevronDown className="w-3 h-3 text-emerald-700 shrink-0" />
               </button>
 
               {showLangMenu && (
-                <div className="absolute right-0 mt-2 w-64 bg-white text-stone-900 rounded-2xl shadow-xl border border-stone-200 py-2 z-50 grid grid-cols-2 gap-1 p-2 animate-in fade-in">
-                  {SUPPORTED_LANGUAGES.map((lang) => (
+                <div className="absolute right-0 mt-2 w-72 bg-white text-stone-900 rounded-2xl shadow-2xl border border-stone-200 py-2 z-50 grid grid-cols-2 gap-1.5 p-2.5 animate-in fade-in">
+                  {supportedLanguages.map((lang) => (
                     <button
                       key={lang.code}
                       onClick={() => {
+                        setLanguage(lang.code);
                         onSelectLanguage(lang.code);
                         setShowLangMenu(false);
                       }}
-                      className={`px-2.5 py-1.5 rounded-xl text-left text-xs flex flex-col transition-colors cursor-pointer ${
-                        lang.code === farmer.preferredLanguage
-                          ? 'bg-emerald-700 text-white font-bold'
-                          : 'hover:bg-stone-100 text-stone-800'
+                      className={`px-3 py-2 rounded-xl text-left text-xs flex flex-col transition-all cursor-pointer ${
+                        lang.code === language
+                          ? 'bg-emerald-700 text-white font-bold shadow-xs'
+                          : 'hover:bg-emerald-50 text-stone-800'
                       }`}
                     >
-                      <span className="font-bold leading-tight">{lang.nativeLabel}</span>
+                      <span className="font-bold leading-tight text-[13px]">{lang.nativeName}</span>
                       <span
                         className={`text-[10px] ${
-                          lang.code === farmer.preferredLanguage
-                            ? 'text-emerald-100'
-                            : 'text-stone-500'
+                          lang.code === language ? 'text-emerald-100' : 'text-stone-500'
                         }`}
                       >
-                        {lang.label}
+                        {lang.name}
                       </span>
                     </button>
                   ))}
@@ -259,7 +264,7 @@ export const Header: React.FC<HeaderProps> = ({
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100/70 text-amber-900 border border-amber-200 text-xs font-bold transition-all shadow-xs cursor-pointer"
               >
                 <Users className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                <span className="hidden md:inline">Demo Switcher</span>
+                <span className="hidden md:inline">{t('nav.demoProfiles')}</span>
                 <ChevronDown className="w-3 h-3 text-amber-700 shrink-0" />
               </button>
 
@@ -267,10 +272,10 @@ export const Header: React.FC<HeaderProps> = ({
                 <div className="absolute right-0 mt-2 w-80 bg-white text-stone-900 rounded-2xl shadow-xl border border-stone-200 py-2 z-50 animate-in fade-in">
                   <div className="px-3.5 py-1.5 border-b border-stone-100">
                     <p className="text-xs font-bold text-stone-900">
-                      Pan-India Agricultural Archetypes
+                      {t('auth.selectArchetype')}
                     </p>
                     <p className="text-[11px] text-stone-500">
-                      Switch agro-climatic zones, soils, and regional crops
+                      {t('auth.quickDemoLogin')}
                     </p>
                   </div>
                   <div className="p-1.5 space-y-1 max-h-72 overflow-y-auto">
@@ -290,11 +295,15 @@ export const Header: React.FC<HeaderProps> = ({
                         <div>
                           <p className="font-bold text-stone-900">{demo.farmer.name}</p>
                           <p className="text-[11px] text-stone-500">
-                            {demo.farmer.district}, {demo.farmer.state} • {demo.farmer.farms[0]?.plots[0]?.currentCropSeason?.cropName}
+                            {demo.farmer.district}, {demo.farmer.state} •{' '}
+                            {lookupAgro(
+                              'crops',
+                              demo.farmer.farms[0]?.plots[0]?.currentCropSeason?.cropName || ''
+                            )}
                           </p>
                         </div>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-stone-100 text-stone-700">
-                          {demo.farmer.farms[0]?.totalAreaAcres} Ac
+                          {demo.farmer.farms[0]?.totalAreaAcres} {t('common.acre')}
                         </span>
                       </button>
                     ))}
@@ -321,12 +330,12 @@ export const Header: React.FC<HeaderProps> = ({
               {farmer.role === 'AGRICULTURAL_OFFICER' ? (
                 <>
                   <Building2 className="w-3.5 h-3.5 text-purple-700" />
-                  <span>KVK Officer</span>
+                  <span>{t('nav.officerDashboard')}</span>
                 </>
               ) : (
                 <>
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  <span className="hidden sm:inline">Farmer</span>
+                  <span className="hidden sm:inline">{t('nav.krishiMitra')}</span>
                 </>
               )}
             </button>
@@ -390,7 +399,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Building2 className="w-4 h-4 text-purple-700" />
-              <span>{getTranslation(farmer.preferredLanguage, 'officerDashboard')}</span>
+              <span>{t('nav.officerDashboard')}</span>
             </button>
           )}
         </div>

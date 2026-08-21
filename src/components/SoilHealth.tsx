@@ -1,24 +1,17 @@
 import React, { useState } from 'react';
 import {
-  Layers,
   FlaskConical,
   CheckCircle2,
-  AlertTriangle,
   Sparkles,
-  Info,
   TrendingUp,
-  RotateCcw,
-  ShieldCheck,
-  Calendar,
   Save,
-  Check,
 } from 'lucide-react';
 import { FarmerProfile, FarmPlot, SoilProfile, SoilType } from '../types/farming';
-import { getTranslation } from '../data/i18n';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
+import { useI18n } from '../context/I18nContext';
 
 interface SoilHealthProps {
   farmer: FarmerProfile;
@@ -28,11 +21,11 @@ interface SoilHealthProps {
 }
 
 export const SoilHealth: React.FC<SoilHealthProps> = ({
-  farmer,
   selectedPlot,
   onUpdateSoil,
   onNavigateTab,
 }) => {
+  const { t, lookupAgro } = useI18n();
   const currentSoil = selectedPlot?.soil || {
     soilType: 'Alluvial Soil' as SoilType,
     ph: 7.0,
@@ -46,8 +39,6 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
   const [editMode, setEditMode] = useState(false);
   const [soilForm, setSoilForm] = useState<SoilProfile>(currentSoil);
   const [successNotice, setSuccessNotice] = useState(false);
-
-  const lang = farmer.preferredLanguage;
 
   const handleSave = () => {
     onUpdateSoil(selectedPlot.id, soilForm);
@@ -83,8 +74,8 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header */}
       <SectionHeader
-        title="Soil Health Card & Nutrient Telemetry"
-        subtitle={`Plot: ${selectedPlot?.name} (${selectedPlot?.areaAcres} Acres) • Certified under National Soil Health Card Scheme`}
+        title={t('soil.title')}
+        subtitle={`${t('cropPlanner.activeCrop')}: ${selectedPlot?.name} (${selectedPlot?.areaAcres} ${t('common.acre')}) • Certified under National Soil Health Card Scheme`}
         badge={
           <Badge variant="primary" size="sm">
             <FlaskConical className="w-3.5 h-3.5 mr-1" />
@@ -97,7 +88,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
             size="sm"
             onClick={() => setEditMode(!editMode)}
           >
-            {editMode ? 'Cancel Editing' : 'Update Soil Test Report'}
+            {editMode ? t('common.cancel') : t('soil.title')}
           </Button>
         }
       />
@@ -105,7 +96,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
       {successNotice && (
         <div className="p-3.5 bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-2xl text-xs font-bold flex items-center gap-2 animate-in fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-          <span>Soil Health parameters successfully updated and synced for {selectedPlot.name}!</span>
+          <span>{t('common.success')}! Soil Health parameters updated.</span>
         </div>
       )}
 
@@ -117,10 +108,10 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
             <div className="flex items-center justify-between pb-4 border-b border-stone-200">
               <div>
                 <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                  Dominant Soil Structure
+                  {t('soil.soilType')}
                 </span>
                 <h3 className="text-xl font-extrabold text-stone-900 mt-0.5">
-                  {currentSoil.soilType}
+                  {lookupAgro('soilTypes', currentSoil.soilType)}
                 </h3>
               </div>
               <Badge variant="neutral" size="sm">
@@ -133,7 +124,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
               <div className="flex items-center justify-between">
                 <div>
                   <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">
-                    Soil Reaction (pH)
+                    {t('soil.ph')}
                   </span>
                   <div className="flex items-baseline gap-2.5 mt-1">
                     <span className="text-3xl font-extrabold text-stone-900">
@@ -174,7 +165,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                 {/* Nitrogen */}
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-stone-500">Nitrogen (N)</span>
+                    <span className="text-xs font-bold text-stone-500">{t('soil.nitrogen')} (N)</span>
                     <p className="text-xl font-extrabold text-stone-900 mt-1">{currentSoil.nitrogen}</p>
                   </div>
                   <div className="mt-3">
@@ -196,7 +187,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                 {/* Phosphorus */}
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-stone-500">Phosphorus (P)</span>
+                    <span className="text-xs font-bold text-stone-500">{t('soil.phosphorus')} (P)</span>
                     <p className="text-xl font-extrabold text-stone-900 mt-1">{currentSoil.phosphorus}</p>
                   </div>
                   <div className="mt-3">
@@ -218,7 +209,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                 {/* Potassium */}
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-stone-500">Potassium (K)</span>
+                    <span className="text-xs font-bold text-stone-500">{t('soil.potassium')} (K)</span>
                     <p className="text-xl font-extrabold text-stone-900 mt-1">{currentSoil.potassium}</p>
                   </div>
                   <div className="mt-3">
@@ -243,7 +234,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200">
                 <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider">
-                  Organic Carbon (OC)
+                  {t('soil.organicCarbon')} (OC)
                 </span>
                 <p className="text-2xl font-extrabold text-emerald-950 mt-1">{currentSoil.organicCarbon}%</p>
                 <p className="text-xs text-emerald-800 mt-1">
@@ -272,13 +263,13 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                 <h4 className="text-sm font-extrabold text-stone-900">Update Soil Test Report Values</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1.5">Soil Type</label>
+                    <label className="font-bold text-stone-700 block mb-1.5">{t('soil.soilType')}</label>
                     <select
                       value={soilForm.soilType}
                       onChange={(e) =>
                         setSoilForm({ ...soilForm, soilType: e.target.value as SoilType })
                       }
-                      className="agri-input text-xs"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                     >
                       <option value="Alluvial Soil">Alluvial Soil</option>
                       <option value="Black Soil (Regur)">Black Soil (Regur)</option>
@@ -290,7 +281,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1.5">pH (4.0 - 9.5)</label>
+                    <label className="font-bold text-stone-700 block mb-1.5">{t('soil.ph')} (4.0 - 9.5)</label>
                     <input
                       type="number"
                       step="0.1"
@@ -298,12 +289,12 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                       onChange={(e) =>
                         setSoilForm({ ...soilForm, ph: parseFloat(e.target.value) || 7.0 })
                       }
-                      className="agri-input text-xs"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                     />
                   </div>
 
                   <div>
-                    <label className="font-bold text-stone-700 block mb-1.5">Organic Carbon (%)</label>
+                    <label className="font-bold text-stone-700 block mb-1.5">{t('soil.organicCarbon')} (%)</label>
                     <input
                       type="number"
                       step="0.05"
@@ -314,7 +305,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                           organicCarbon: parseFloat(e.target.value) || 0.5,
                         })
                       }
-                      className="agri-input text-xs"
+                      className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                     />
                   </div>
                 </div>
@@ -325,7 +316,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                     size="sm"
                     onClick={() => setEditMode(false)}
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     variant="primary"
@@ -333,7 +324,7 @@ export const SoilHealth: React.FC<SoilHealthProps> = ({
                     leftIcon={<Save className="w-3.5 h-3.5" />}
                     onClick={handleSave}
                   >
-                    Save Soil Data
+                    {t('common.save')}
                   </Button>
                 </div>
               </div>

@@ -31,6 +31,9 @@ import { FarmerOnboarding } from './components/FarmerOnboarding';
 // Authentication & Cloud Firestore Services
 import { authService } from './services/authService';
 import { firestoreService } from './services/firestoreService';
+import { resolveActiveFarmLocation } from './services/locationService';
+import { fetchWeatherForLocation, generateClientFallbackWeather } from './services/weatherService';
+import { useI18n } from './context/I18nContext';
 import { AuthLayout } from './components/auth/AuthLayout';
 import { PhoneLoginForm } from './components/auth/PhoneLoginForm';
 import { OTPVerification } from './components/auth/OTPVerification';
@@ -57,6 +60,8 @@ type AuthViewMode =
   | 'onboarding-wizard';
 
 export function App() {
+  const { language: currentI18nLang, setLanguage: setGlobalLanguage } = useI18n();
+
   // 1. Authentication State
   const [session, setSession] = useState<AuthSession | null>(() => authService.getSession());
   const [authView, setAuthView] = useState<AuthViewMode>(() => (authService.getSession() ? 'app' : 'landing'));
@@ -110,8 +115,16 @@ export function App() {
     return DEMO_FARMERS[0].tickets;
   });
 
-  // 7. Weather Context
-  const [weather, setWeather] = useState<WeatherContext>(DEMO_FARMERS[0].weather);
+  // 7. Dynamic Weather Context (Initialized with location-aware fallback)
+  const [weather, setWeather] = useState<WeatherContext>(() => {
+    try {
+      const activeLoc = resolveActiveFarmLocation(farmer, farmer.farms?.[0], farmer.farms?.[0]?.plots?.[0]);
+      return generateClientFallbackWeather(activeLoc);
+    } catch (e) {
+      return DEMO_FARMERS[0].weather;
+    }
+  });
+  const [isWeatherLoading, setIsWeatherLoading] = useState<boolean>(false);
 
   // 8. Navigation payload transfers
   const [initialChatQuery, setInitialChatQuery] = useState<string>('');
@@ -152,6 +165,11 @@ export function App() {
   }, [authView]);
 
   // Real-time Firestore Subscriptions when user is authenticated
+  useEffect(() => {
+    if (farmer.preferredLanguage && farmer.preferredLanguage !== currentI18nLang) {
+      setGlobalLanguage(farmer.preferredLanguage);
+    }
+  }, [farmer.preferredLanguage, currentI18nLang, setGlobalLanguage]);
   useEffect(() => {
     const userId = session?.user?.id;
     if (!userId) return;
@@ -233,6 +251,72 @@ export function App() {
     selectedFarm?.plots?.find((p) => p.id === selectedPlotId) ||
     selectedFarm?.plots?.[0] ||
     ({} as FarmPlot);
+
+  // Dynamically synchronize weather whenever farmer location, selected farm, or plot crop changes
+  useEffect(() => {
+    let isMounted = true;
+    const syncDynamicWeather = async () => {
+      setIsWeatherLoading(true);
+      try {
+        const loc = resolveActiveFarmLocation(farmer, selectedFarm, selectedPlot);
+        const cropCtx = {
+          cropName: selectedPlot?.currentCropSeason?.cropName,
+          variety: selectedPlot?.currentCropSeason?.variety,
+          stage: selectedPlot?.currentCropSeason?.currentStage,
+          soilType: selectedPlot?.soil?.soilType,
+        };
+        const freshWeather = await fetchWeatherForLocation(loc, cropCtx);
+        if (isMounted) {
+          setWeather(freshWeather);
+        }
+      } catch (err) {
+        console.warn('Dynamic weather synchronization error:', err);
+      } finally {
+        if (isMounted) {
+          setIsWeatherLoading(false);
+        }
+      }
+    };
+
+    syncDynamicWeather();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [
+    farmer.state,
+    farmer.district,
+    farmer.village,
+    farmer.latitude,
+    farmer.longitude,
+    selectedFarmId,
+    selectedPlotId,
+    selectedFarm?.latitude,
+    selectedFarm?.longitude,
+    selectedFarm?.district,
+    selectedPlot?.latitude,
+    selectedPlot?.longitude,
+    selectedPlot?.currentCropSeason?.cropName,
+  ]);
+
+  const handleRefreshWeather = async () => {
+    setIsWeatherLoading(true);
+    try {
+      const loc = resolveActiveFarmLocation(farmer, selectedFarm, selectedPlot);
+      const cropCtx = {
+        cropName: selectedPlot?.currentCropSeason?.cropName,
+        variety: selectedPlot?.currentCropSeason?.variety,
+        stage: selectedPlot?.currentCropSeason?.currentStage,
+        soilType: selectedPlot?.soil?.soilType,
+      };
+      const freshWeather = await fetchWeatherForLocation(loc, cropCtx, true);
+      setWeather(freshWeather);
+    } catch (err) {
+      console.error('Failed to manually sync weather:', err);
+    } finally {
+      setIsWeatherLoading(false);
+    }
+  };
 
   // Authentication Handlers
   const handleSendOTP = async (phone: string) => {
@@ -477,6 +561,7 @@ export function App() {
 
   // General App Handlers
   const handleSelectLanguage = (lang: LanguageCode) => {
+    setGlobalLanguage(lang);
     setFarmer((prev) => {
       const updated = { ...prev, preferredLanguage: lang };
       if (session?.user?.id) {
@@ -821,6 +906,9 @@ export function App() {
             onCompleteTask={handleCompleteTask}
             onNavigateTab={setActiveTab}
             onQuickAsk={handleQuickAsk}
+            onRefreshWeather={handleRefreshWeather}
+            onEditLocation={() => setActiveTab('profile')}
+            isWeatherLoading={isWeatherLoading}
           />
         )}
 

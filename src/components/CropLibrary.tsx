@@ -2,37 +2,30 @@ import React, { useState } from 'react';
 import {
   BookOpen,
   Search,
-  Filter,
   Droplets,
-  Calendar,
   Layers,
   Bug,
-  ShieldCheck,
-  ChevronRight,
-  ExternalLink,
 } from 'lucide-react';
-import { FarmerProfile, CropInfo, CropCategory } from '../types/farming';
+import { FarmerProfile, CropInfo } from '../types/farming';
 import { CROP_LIBRARY } from '../data/cropLibraryData';
-import { getTranslation } from '../data/i18n';
 import { Card } from './ui/Card';
-import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { SectionHeader } from './ui/SectionHeader';
+import { useI18n } from '../context/I18nContext';
 
 interface CropLibraryProps {
   farmer: FarmerProfile;
   onNavigateTab: (tab: string) => void;
 }
 
-export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab }) => {
+export const CropLibrary: React.FC<CropLibraryProps> = ({ onNavigateTab }) => {
+  const { t, language, lookupAgro } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedCrop, setSelectedCrop] = useState<CropInfo>(CROP_LIBRARY[0]);
 
-  const lang = farmer.preferredLanguage;
-
   const filteredCrops = CROP_LIBRARY.filter((crop) => {
-    const localName = crop.localNames[lang] || crop.name;
+    const localName = crop.localNames[language] || crop.name;
     const matchesSearch =
       crop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       localName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -45,8 +38,8 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header */}
       <SectionHeader
-        title="Crop Knowledge & Package of Practices"
-        subtitle="Comprehensive agronomy dossiers verified by ICAR and State Agricultural Universities (SAUs) • Spacing, fertilizer schedules, critical irrigation windows, and IPM protocols"
+        title={t('cropLibrary.title')}
+        subtitle={t('cropLibrary.subtitle')}
         badge={
           <Badge variant="primary" size="sm">
             <BookOpen className="w-3.5 h-3.5 mr-1" />
@@ -64,8 +57,8 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search crop in English or regional name..."
-              className="agri-input pl-10 pr-4 py-2 text-xs sm:text-sm"
+              placeholder={t('cropLibrary.searchPlaceholder')}
+              className="w-full pl-10 pr-4 py-2 text-xs sm:text-sm rounded-xl border border-stone-300 focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
             />
           </div>
 
@@ -81,7 +74,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
                       : 'bg-stone-100 text-stone-600 hover:text-stone-900 border border-stone-200'
                   }`}
                 >
-                  {cat}
+                  {cat === 'All' ? t('common.all') : cat}
                 </button>
               )
             )}
@@ -114,14 +107,14 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
                     {crop.category}
                   </Badge>
                   <span className="text-[10px] text-stone-500 font-medium">
-                    {crop.durationDays} Days
+                    {crop.durationDays} {t('cropPlanner.daysToHarvest')}
                   </span>
                 </div>
                 <h4 className="text-sm font-extrabold text-stone-900 truncate mt-1">
-                  {crop.name}
+                  {lookupAgro('crops', crop.name)}
                 </h4>
                 <p className="text-xs text-emerald-800 font-bold truncate">
-                  {crop.localNames[lang] || crop.localNames.hi || crop.name}
+                  {crop.localNames[language] || crop.localNames.hi || crop.name}
                 </p>
               </div>
             </button>
@@ -148,10 +141,10 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
                   </span>
                 </div>
                 <h2 className="text-2xl font-extrabold text-stone-900">
-                  {selectedCrop.name}
+                  {lookupAgro('crops', selectedCrop.name)}
                 </h2>
                 <p className="text-sm font-bold text-emerald-800">
-                  {selectedCrop.localNames[lang] || selectedCrop.localNames.hi}
+                  {selectedCrop.localNames[language] || selectedCrop.localNames.hi}
                 </p>
                 <p className="text-xs text-stone-600">
                   <strong className="text-stone-800">Major Producing States:</strong>{' '}
@@ -163,25 +156,25 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
             {/* Quick Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center text-xs">
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Sowing Season</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.season')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
-                  {selectedCrop.optimalSeason.join(', ')}
+                  {selectedCrop.optimalSeason.map(s => lookupAgro('seasons', s)).join(', ')}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Duration</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.duration')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {selectedCrop.durationDays} Days
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Water Need</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.waterNeed')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {selectedCrop.waterRequirement}
                 </p>
               </div>
               <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200">
-                <p className="text-[10px] text-stone-500 font-medium">Soil pH Range</p>
+                <p className="text-[10px] text-stone-500 font-medium">{t('cropLibrary.soilPh')}</p>
                 <p className="font-extrabold text-stone-900 mt-0.5">
                   {selectedCrop.optimalPhRange.join(' - ')}
                 </p>
@@ -191,7 +184,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
             {/* Sowing, Seed Rate & Spacing */}
             <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
               <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider">
-                Seed Rate & Field Spacing
+                {t('cropLibrary.spacing')} & Seed Rate
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-stone-700">
                 <div>
@@ -209,7 +202,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-emerald-700" />
-                <span>Nutrient & Fertilizer Management Schedule</span>
+                <span>{t('cropLibrary.fertilizer')}</span>
               </h3>
               <div className="space-y-2 text-xs">
                 <div className="p-3 bg-stone-50 border border-stone-200 rounded-2xl">
@@ -241,7 +234,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Droplets className="w-4 h-4 text-sky-600" />
-                <span>Critical Irrigation Stages (Zero Moisture Stress Windows)</span>
+                <span>{t('cropLibrary.irrigation')}</span>
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-stone-700">
                 {selectedCrop.irrigationCriticalStages.map((stage, i) => (
@@ -260,7 +253,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
             <div className="space-y-3">
               <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                 <Bug className="w-4 h-4 text-rose-700" />
-                <span>Major Pests & Integrated Pest Management (IPM)</span>
+                <span>{t('cropLibrary.pests')}</span>
               </h3>
               <div className="space-y-3">
                 {selectedCrop.majorPestsAndDiseases.map((item, idx) => (
@@ -293,7 +286,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
 
             {/* Harvest Indicators */}
             <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-200 text-xs text-amber-950">
-              <span className="font-bold text-amber-900">🌾 Harvest Maturity Indicators: </span>
+              <span className="font-bold text-amber-900">🌾 {t('cropLibrary.harvest')}: </span>
               <span>{selectedCrop.harvestIndicators}</span>
             </div>
 
@@ -304,7 +297,7 @@ export const CropLibrary: React.FC<CropLibraryProps> = ({ farmer, onNavigateTab 
                 onClick={() => onNavigateTab('planner')}
                 className="text-emerald-800 font-bold hover:underline cursor-pointer"
               >
-                Check Suitability for Your Farm →
+                {t('nav.cropPlanner')} →
               </button>
             </div>
           </Card>

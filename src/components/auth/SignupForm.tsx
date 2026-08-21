@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { User, Mail, Phone, Lock, Eye, EyeOff, MapPin, Globe, ArrowRight, AlertCircle, Sparkles } from 'lucide-react';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { LanguageCode } from '../../types/farming';
-import { SUPPORTED_LANGUAGES } from '../../data/i18n';
 import { INDIA_AGRO_STATES } from '../../data/indiaAgroData';
+import { useI18n } from '../../context/I18nContext';
 
 interface SignupFormProps {
   onSignup: (data: {
@@ -29,14 +29,15 @@ export const SignupForm: React.FC<SignupFormProps> = ({
   onSwitchToLogin,
   isLoading,
   error,
-  defaultLanguage = 'hi',
+  defaultLanguage,
 }) => {
+  const { t, language } = useI18n();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(defaultLanguage);
+  const [preferredLanguage, setPreferredLanguage] = useState<LanguageCode>(defaultLanguage || language);
   const [state, setState] = useState('Punjab');
   const [district, setDistrict] = useState('Ludhiana');
   const [role, setRole] = useState<'FARMER' | 'AGRICULTURAL_OFFICER'>('FARMER');
@@ -64,7 +65,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         setLocalError(res.message);
       }
     } catch (e: any) {
-      setLocalError(e.message || 'Google registration failed');
+      setLocalError(e.message || t('errors.generic'));
     } finally {
       setIsGoogleLoading(false);
     }
@@ -75,28 +76,28 @@ export const SignupForm: React.FC<SignupFormProps> = ({
     setLocalError('');
 
     if (!name.trim()) {
-      setLocalError('Please enter your full name.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     const cleanPhone = phone.replace(/\D/g, '');
     if (cleanPhone && cleanPhone.length !== 10) {
-      setLocalError('Mobile number must be a 10-digit Indian number.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     if (!email && !cleanPhone) {
-      setLocalError('Please provide either a mobile number or email address.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     if (password.length < 6) {
-      setLocalError('Password must be at least 6 characters long.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
     if (!agreeTerms) {
-      setLocalError('Please agree to terms and privacy policy.');
+      setLocalError(t('errors.invalidInput'));
       return;
     }
 
@@ -105,7 +106,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
       email: email.trim() || undefined,
       phone: cleanPhone || undefined,
       password,
-      preferredLanguage,
+      preferredLanguage: language,
       state,
       district,
       role,
@@ -122,7 +123,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
       <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
         <div className="flex items-center gap-1.5 font-bold">
           <span className="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span>
-          <span>Firebase Authentication & Cloud Firestore</span>
+          <span>{t('auth.cloudSync')}</span>
         </div>
         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white text-emerald-800 border border-emerald-200">
           kisanai-8b20e
@@ -164,12 +165,12 @@ export const SignupForm: React.FC<SignupFormProps> = ({
                 d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
               />
             </svg>
-            <span>{isGoogleLoading ? 'Connecting Google...' : 'Quick Sign Up with Google'}</span>
+            <span>{isGoogleLoading ? t('common.loading') : t('auth.googleLogin')}</span>
           </button>
 
           <div className="relative flex py-2.5 items-center">
             <div className="flex-grow border-t border-stone-200"></div>
-            <span className="flex-shrink mx-3 text-stone-400 text-xs font-semibold uppercase">Or fill details</span>
+            <span className="flex-shrink mx-3 text-stone-400 text-xs font-semibold uppercase">{t('common.or')}</span>
             <div className="flex-grow border-t border-stone-200"></div>
           </div>
         </div>
@@ -179,7 +180,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         {/* Full Name */}
         <div>
           <label htmlFor="signup-name" className="block text-xs font-bold text-stone-700 mb-1">
-            Full Name (पूरा नाम) *
+            {t('auth.fullName')} *
           </label>
           <div className="relative flex items-center">
             <User className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -189,7 +190,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Ramesh Kumar Patel"
+              placeholder="Ramesh Kumar Patel"
               className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
               disabled={isLoading}
             />
@@ -200,7 +201,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label htmlFor="signup-email" className="block text-xs font-bold text-stone-700 mb-1">
-              Email Address (ईमेल) *
+              {t('auth.email')} *
             </label>
             <div className="relative flex items-center">
               <Mail className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -219,7 +220,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
           <div>
             <label htmlFor="signup-phone" className="block text-xs font-bold text-stone-700 mb-1">
-              Mobile Number (optional)
+              {t('auth.mobileNumber')} ({t('common.optional')})
             </label>
             <div className="relative flex items-center">
               <Phone className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -229,7 +230,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
                 inputMode="numeric"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                placeholder="10-digit mobile"
+                placeholder={t('auth.enterPhone')}
                 className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
                 disabled={isLoading}
               />
@@ -241,7 +242,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
           <div>
             <label htmlFor="signup-state" className="block text-xs font-bold text-stone-700 mb-1">
-              State (राज्य) *
+              {t('onboarding.state')} *
             </label>
             <select
               id="signup-state"
@@ -260,7 +261,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
 
           <div>
             <label htmlFor="signup-district" className="block text-xs font-bold text-stone-700 mb-1">
-              District (ज़िला) *
+              {t('onboarding.district')} *
             </label>
             <select
               id="signup-district"
@@ -271,7 +272,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
             >
               {currentState.districts.map((d) => (
                 <option key={d.name} value={d.name}>
-                  {d.name}
+                  {d.nameMr ? `${d.name} (${d.nameMr})` : d.name}
                 </option>
               ))}
             </select>
@@ -281,7 +282,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
         {/* Password */}
         <div>
           <label htmlFor="signup-password" className="block text-xs font-bold text-stone-700 mb-1">
-            Create Password (पासवर्ड) *
+            {t('auth.password')} *
           </label>
           <div className="relative flex items-center">
             <Lock className="absolute left-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -291,7 +292,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 6 characters"
+              placeholder="••••••••"
               className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-stone-300 text-stone-900 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-700 bg-stone-50/50"
               disabled={isLoading}
             />
@@ -310,7 +311,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
           <div className="text-xs">
             <span className="font-bold text-stone-900">Account Type: </span>
             <span className="text-stone-600">
-              {role === 'FARMER' ? 'Farmer / Cultivator' : 'Agricultural Extension Officer'}
+              {role === 'FARMER' ? t('nav.krishiMitra') : t('nav.officerDashboard')}
             </span>
           </div>
           <button
@@ -331,7 +332,7 @@ export const SignupForm: React.FC<SignupFormProps> = ({
             className="mt-0.5 rounded text-emerald-700 focus:ring-emerald-700"
           />
           <span>
-            I agree to KisanAI verified agricultural terms and secure cloud data storage.
+            {t('auth.termsAgree')}
           </span>
         </label>
 
@@ -345,21 +346,21 @@ export const SignupForm: React.FC<SignupFormProps> = ({
           disabled={!name || password.length < 6 || !agreeTerms || isLoading}
           icon={<ArrowRight className="w-4 h-4" />}
         >
-          {isLoading ? 'Creating Farm Account in Firebase...' : 'Create Account & Continue'}
+          {isLoading ? t('common.loading') : t('auth.createAccount')}
         </Button>
       </form>
 
       {/* Switch to Login */}
       <div className="text-center pt-2 border-t border-stone-100">
         <p className="text-xs text-stone-600">
-          Already have an account?{' '}
+          {t('auth.alreadyHaveAccount')}{' '}
           <button
             id="switch-to-login-btn"
             type="button"
             onClick={onSwitchToLogin}
             className="text-emerald-700 font-bold hover:underline cursor-pointer"
           >
-            Sign In with Email or Phone
+            {t('auth.login')}
           </button>
         </p>
       </div>

@@ -1,18 +1,14 @@
 import React, { useState, useRef } from 'react';
 import {
   Camera,
-  Upload,
   Sparkles,
   ShieldCheck,
   AlertTriangle,
   Bug,
   CheckCircle2,
   PhoneCall,
-  RotateCcw,
   BookOpen,
-  ArrowRight,
   Eye,
-  Info,
 } from 'lucide-react';
 import {
   FarmerProfile,
@@ -20,7 +16,7 @@ import {
   WeatherContext,
   CropHealthAnalysis,
 } from '../types/farming';
-import { getTranslation } from '../data/i18n';
+import { useI18n } from '../context/I18nContext';
 import { diagnoseCropHealth } from '../services/aiService';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
@@ -44,7 +40,8 @@ interface CropHealthScannerProps {
 const SAMPLE_LEAF_IMAGES = [
   {
     id: 'sample-paddy-blast',
-    crop: 'Paddy (Rice)',
+    crop: 'Paddy',
+    cropKey: 'paddy',
     disease: 'Rice Blast (Magnaporthe oryzae)',
     url: leafSample1,
     description: 'Spindle shaped necrotic lesions with ash grey center on leaf blade.',
@@ -52,6 +49,7 @@ const SAMPLE_LEAF_IMAGES = [
   {
     id: 'sample-wheat-rust',
     crop: 'Wheat',
+    cropKey: 'wheat',
     disease: 'Yellow Stripe Rust',
     url: leafSample2,
     description: 'Linear yellow powdery pustules forming stripes on foliage.',
@@ -59,6 +57,7 @@ const SAMPLE_LEAF_IMAGES = [
   {
     id: 'sample-cotton-pest',
     crop: 'Cotton',
+    cropKey: 'cotton',
     disease: 'Pink Bollworm / Sucking Pest Stress',
     url: leafSample3,
     description: 'Rosetted flower petals and leaf curling with yellowing.',
@@ -66,6 +65,7 @@ const SAMPLE_LEAF_IMAGES = [
   {
     id: 'sample-tomato-blight',
     crop: 'Tomato',
+    cropKey: 'tomato',
     disease: 'Early / Late Leaf Blight',
     url: leafSample4,
     description: 'Target-board concentric brown rings on lower leaves with yellow halo.',
@@ -79,13 +79,16 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
   onEscalateToExpert,
   onNavigateTab,
 }) => {
+  const { t, language, lookupAgro } = useI18n();
   const [selectedImage, setSelectedImage] = useState<string | null>(leafSample4);
   const [observedSymptoms, setObservedSymptoms] = useState(SAMPLE_LEAF_IMAGES[3].description);
   const [isScanning, setIsScanning] = useState(false);
   const [analysisResult, setAnalysisResult] = useState<CropHealthAnalysis | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const lang = farmer.preferredLanguage;
+
+  const currentCrop = selectedPlot?.currentCropSeason;
+  const localizedCrop = currentCrop?.cropName ? lookupAgro('crops', currentCrop.cropName) : t('common.noData');
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -123,7 +126,8 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
         selectedImage,
         cropName,
         observedSymptoms,
-        contextPayload
+        contextPayload,
+        language
       );
 
       setAnalysisResult(result);
@@ -138,11 +142,11 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
     <div className="space-y-6 pb-12 animate-in fade-in">
       {/* Header Banner */}
       <SectionHeader
-        title="Crop Health & Pest Clinic"
-        subtitle={`Field: ${selectedPlot?.name} (${selectedPlot?.currentCropSeason?.cropName || 'Crop'}) • Capture or upload affected leaf photos for instant pathology diagnosis and organic treatment`}
+        title={t('scanner.title')}
+        subtitle={`${t('profile.farmName')}: ${selectedPlot?.name} (${localizedCrop}) • ${t('scanner.diagnosisSubtitle')}`}
         badge={
           <Badge variant="primary" size="sm">
-            AI Plant Pathology
+            {t('scanner.title')}
           </Badge>
         }
         action={
@@ -162,7 +166,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
           <Card variant="standard" padding="lg">
             <h2 className="text-sm font-extrabold text-stone-900 flex items-center gap-2 mb-3">
               <Camera className="w-4 h-4 text-emerald-700" />
-              <span>1. Upload or Capture Leaf Image</span>
+              <span>1. {t('scanner.uploadCropPhoto')}</span>
             </h2>
 
             {/* Drop / Capture Zone */}
@@ -182,7 +186,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                     className="w-full h-52 object-cover rounded-xl shadow-xs"
                   />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center text-white text-xs font-bold">
-                    Click to change photo
+                    {t('scanner.takePhoto')}
                   </div>
                 </div>
               ) : (
@@ -191,10 +195,10 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                     <Camera className="w-6 h-6" />
                   </div>
                   <p className="text-xs font-bold text-stone-900">
-                    Take or upload affected leaf photo
+                    {t('scanner.uploadCropPhoto')}
                   </p>
                   <p className="text-[11px] text-stone-500 mt-1">
-                    Supports JPG, PNG (Max 10MB)
+                    JPG, PNG (Max 10MB)
                   </p>
                 </div>
               )}
@@ -210,12 +214,12 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
             {/* Symptoms description */}
             <div className="mt-3">
               <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                Observed Field Symptoms (Optional)
+                {t('scanner.observedSymptoms')}
               </label>
               <textarea
                 value={observedSymptoms}
                 onChange={(e) => setObservedSymptoms(e.target.value)}
-                placeholder="e.g. Concentric brown lesions, yellow margins, curled new growth, white powdery residue..."
+                placeholder={t('scanner.symptomsPlaceholder')}
                 className="agri-input text-xs"
                 rows={2}
               />
@@ -232,7 +236,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                 disabled={!selectedImage || isScanning}
                 isLoading={isScanning}
               >
-                <span>Diagnose Plant Health</span>
+                <span>{isScanning ? t('scanner.analyzingPlant') : t('scanner.diagnose')}</span>
               </Button>
             </div>
           </Card>
@@ -241,7 +245,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
           <Card variant="highlight" padding="md">
             <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
               <Eye className="w-3.5 h-3.5 text-emerald-700" />
-              <span>Or Select Sample Diseased Leaf</span>
+              <span>{t('scanner.sampleLeaves')}</span>
             </h3>
 
             <div className="grid grid-cols-2 gap-2">
@@ -262,7 +266,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                   />
                   <div>
                     <p className="text-xs font-bold text-stone-900 leading-tight">
-                      {sample.crop}
+                      {lookupAgro('crops', sample.crop)}
                     </p>
                     <p className="text-[10px] text-stone-500 truncate">{sample.disease}</p>
                   </div>
@@ -282,7 +286,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                   <div className="flex items-center gap-2">
                     <Badge variant="warning" size="sm">
                       <Bug className="w-3 h-3 mr-1" />
-                      Suspected Condition
+                      {t('scanner.suspectedIssue')}
                     </Badge>
                     <Badge variant="success" size="sm">
                       {analysisResult.confidenceLevel} ({analysisResult.confidencePercent}%)
@@ -299,7 +303,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                   leftIcon={<PhoneCall className="w-3.5 h-3.5 text-purple-700" />}
                   onClick={() => onEscalateToExpert(analysisResult)}
                 >
-                  <span>Escalate to KVK Expert</span>
+                  <span>{t('scanner.escalateToExpert')}</span>
                 </Button>
               </div>
 
@@ -307,7 +311,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>Key Observed Pathology Symptoms</span>
+                  <span>{t('scanner.observedSymptoms')}</span>
                 </h3>
                 <ul className="space-y-1 pl-1 text-xs text-stone-700">
                   {analysisResult.observedSymptoms.map((s, idx) => (
@@ -323,7 +327,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
               <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 space-y-2">
                 <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-emerald-700" />
-                  <span>Recommended Immediate Action (Field Dosages)</span>
+                  <span>{t('scanner.immediateAction')}</span>
                 </h3>
                 <ul className="space-y-1.5 text-xs text-emerald-900 font-medium">
                   {analysisResult.immediateActions.map((action, idx) => (
@@ -340,7 +344,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
                 <div className="p-4 rounded-2xl bg-teal-50/70 border border-teal-200 space-y-1">
                   <h3 className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-teal-700" />
-                    <span>Biological & Organic Control (Zero Chemical Residue)</span>
+                    <span>{t('scanner.organicControl')}</span>
                   </h3>
                   <p className="text-xs text-teal-900 font-medium leading-relaxed">
                     {analysisResult.organicIPMSolution}
@@ -352,7 +356,7 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
               <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-950 space-y-1.5">
                 <div className="flex items-center gap-1.5 font-bold text-amber-900">
                   <AlertTriangle className="w-4 h-4 shrink-0 text-amber-700" />
-                  <span>Safety Notice & Pre-Harvest Interval (PHI)</span>
+                  <span>{t('scanner.safetyCaution')}</span>
                 </div>
                 <p className="leading-relaxed">{analysisResult.safetyCaution}</p>
                 <p className="text-[11px] text-amber-800 font-medium italic pt-1">
@@ -373,8 +377,8 @@ export const CropHealthScanner: React.FC<CropHealthScannerProps> = ({
             <Card variant="standard" padding="lg">
               <EmptyState
                 icon={<Camera className="w-8 h-8 text-stone-400" />}
-                title="No Scan Performed Yet"
-                description="Upload an image from your field or select a sample leaf on the left to get instantaneous plant pathology diagnosis, verified spray dosages, and organic remedies."
+                title={t('scanner.noScanTitle')}
+                description={t('scanner.noScanDescription')}
               />
             </Card>
           )}

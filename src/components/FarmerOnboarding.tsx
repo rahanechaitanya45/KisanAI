@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
 import {
-  Sprout,
-  User,
-  MapPin,
-  Globe,
-  Layers,
-  Droplets,
-  Calendar,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  X,
 } from 'lucide-react';
 import {
   FarmerProfile,
@@ -20,11 +12,12 @@ import {
   SoilType,
   WaterSource,
 } from '../types/farming';
-import { SUPPORTED_LANGUAGES, getTranslation } from '../data/i18n';
-import { INDIAN_STATES_AND_DISTRICTS } from '../data/indiaAgroData';
+import { SUPPORTED_LANGUAGES } from '../data/i18n';
+import { INDIAN_STATES_AND_DISTRICTS, INDIA_AGRO_STATES } from '../data/indiaAgroData';
 import { Card } from './ui/Card';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
+import { useI18n } from '../context/I18nContext';
 
 interface FarmerOnboardingProps {
   onComplete: (profile: FarmerProfile) => void;
@@ -37,6 +30,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
   onCancel,
   existingProfile,
 }) => {
+  const { t, setLanguage: setGlobalLanguage } = useI18n();
   const [step, setStep] = useState(1);
 
   // Step 1 State: Identity
@@ -120,6 +114,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
       onboardingCompleted: true,
     };
 
+    setGlobalLanguage(language);
     onComplete(newProfile);
   };
 
@@ -138,7 +133,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
                 🌱
               </div>
               <h2 className="text-lg font-extrabold text-stone-900">
-                KisanAI Farm Setup & Profile
+                {t('onboarding.setupProfile')}
               </h2>
             </div>
             <Badge variant="neutral" size="sm">
@@ -159,24 +154,24 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
         {step === 1 && (
           <div className="space-y-4 animate-in fade-in text-xs">
             <h3 className="font-extrabold text-stone-900 text-sm">
-              Personal & Regional Demographics
+              {t('onboarding.setupProfile')}
             </h3>
 
             <div>
-              <label className="font-bold text-stone-700 block mb-1">Farmer Name</label>
+              <label className="font-bold text-stone-700 block mb-1">{t('profile.fullName')}</label>
               <input
                 type="text"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Gurpreet Singh / Ramesh Patel"
-                className="agri-input text-xs"
+                placeholder="e.g. Ramesh Patel"
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-stone-700 block mb-1">State</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('profile.state')}</label>
                 <select
                   value={state}
                   onChange={(e) => {
@@ -187,7 +182,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
                     )?.districts[0];
                     if (firstDist) setDistrict(firstDist);
                   }}
-                  className="agri-input text-xs font-semibold"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
                 >
                   {INDIAN_STATES_AND_DISTRICTS.map((s) => (
                     <option key={s.state} value={s.state}>
@@ -198,27 +193,36 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-stone-700 block mb-1">District</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('profile.district')}</label>
                 <select
                   value={district}
                   onChange={(e) => setDistrict(e.target.value)}
-                  className="agri-input text-xs font-semibold"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
                 >
-                  {availableDistricts.map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
+                  {availableDistricts.map((d) => {
+                    const dInfo = INDIA_AGRO_STATES.find((s) => s.name === state)?.districts.find(
+                      (item) => item.name === d
+                    );
+                    return (
+                      <option key={d} value={d}>
+                        {dInfo?.nameMr ? `${d} (${dInfo.nameMr})` : d}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
             </div>
 
             <div>
-              <label className="font-bold text-stone-700 block mb-1">Preferred Language</label>
+              <label className="font-bold text-stone-700 block mb-1">{t('profile.language')}</label>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as LanguageCode)}
-                className="agri-input text-xs font-semibold"
+                onChange={(e) => {
+                  const newL = e.target.value as LanguageCode;
+                  setLanguage(newL);
+                  setGlobalLanguage(newL);
+                }}
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
               >
                 {SUPPORTED_LANGUAGES.map((l) => (
                   <option key={l.code} value={l.code}>
@@ -233,39 +237,39 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
         {/* Step 2: Farm & Soil Setup */}
         {step === 2 && (
           <div className="space-y-4 animate-in fade-in text-xs">
-            <h3 className="font-extrabold text-stone-900 text-sm">Farm & Soil Profile</h3>
+            <h3 className="font-extrabold text-stone-900 text-sm">{t('onboarding.setupFarm')}</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Farm / Plot Name</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('onboarding.farmName')}</label>
                 <input
                   type="text"
                   value={farmName}
                   onChange={(e) => setFarmName(e.target.value)}
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
 
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Total Land (Acres)</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('onboarding.totalLand')} ({t('common.acre')})</label>
                 <input
                   type="number"
                   min="0.5"
                   step="0.5"
                   value={totalAcres}
                   onChange={(e) => setTotalAcres(parseFloat(e.target.value) || 1)}
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Dominant Soil Type</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('soil.soilType')}</label>
                 <select
                   value={soilType}
                   onChange={(e) => setSoilType(e.target.value as SoilType)}
-                  className="agri-input text-xs font-semibold"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
                 >
                   <option value="Alluvial Soil">Alluvial Soil</option>
                   <option value="Black Soil (Regur)">Black Soil (Regur)</option>
@@ -277,23 +281,23 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
               </div>
 
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Soil pH (4.0 - 9.0)</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('soil.ph')} (4.0 - 9.0)</label>
                 <input
                   type="number"
                   step="0.1"
                   value={soilPh}
                   onChange={(e) => setSoilPh(parseFloat(e.target.value) || 7.0)}
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="font-bold text-stone-700 block mb-1">Primary Water Source</label>
+              <label className="font-bold text-stone-700 block mb-1">{t('onboarding.waterSource')}</label>
               <select
                 value={waterSource}
                 onChange={(e) => setWaterSource(e.target.value as WaterSource)}
-                className="agri-input text-xs font-semibold"
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
               >
                 <option value="Canal">Canal Irrigation</option>
                 <option value="Borewell">Borewell / Tubewell</option>
@@ -308,17 +312,17 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
         {/* Step 3: Current Crop */}
         {step === 3 && (
           <div className="space-y-4 animate-in fade-in text-xs">
-            <h3 className="font-extrabold text-stone-900 text-sm">Active Crop & Sowing Date</h3>
+            <h3 className="font-extrabold text-stone-900 text-sm">{t('cropPlanner.activeCrop')}</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="font-bold text-stone-700 block mb-1">Crop Sown</label>
+                <label className="font-bold text-stone-700 block mb-1">{t('cropPlanner.activeCrop')}</label>
                 <input
                   type="text"
                   value={cropName}
                   onChange={(e) => setCropName(e.target.value)}
                   placeholder="e.g. Paddy, Wheat, Cotton, Sugarcane"
-                  className="agri-input text-xs font-semibold"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs font-semibold"
                 />
               </div>
 
@@ -329,18 +333,18 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
                   value={variety}
                   onChange={(e) => setVariety(e.target.value)}
                   placeholder="e.g. PR-126, HD-2967, Bt-Cotton"
-                  className="agri-input text-xs"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
                 />
               </div>
             </div>
 
             <div>
-              <label className="font-bold text-stone-700 block mb-1">Sowing Date</label>
+              <label className="font-bold text-stone-700 block mb-1">{t('cropPlanner.sowingDate')}</label>
               <input
                 type="date"
                 value={sowingDate}
                 onChange={(e) => setSowingDate(e.target.value)}
-                className="agri-input text-xs"
+                className="w-full px-3 py-2 rounded-xl border border-stone-300 text-xs"
               />
             </div>
 
@@ -370,11 +374,11 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
               onClick={() => setStep(step - 1)}
               leftIcon={<ChevronLeft className="w-4 h-4" />}
             >
-              Previous
+              {t('common.back')}
             </Button>
           ) : onCancel ? (
             <Button variant="secondary" size="sm" onClick={onCancel}>
-              Cancel
+              {t('common.cancel')}
             </Button>
           ) : (
             <div />
@@ -387,7 +391,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
               onClick={() => setStep(step + 1)}
               rightIcon={<ChevronRight className="w-4 h-4" />}
             >
-              Next Step
+              {t('common.next')}
             </Button>
           ) : (
             <Button
@@ -396,7 +400,7 @@ export const FarmerOnboarding: React.FC<FarmerOnboardingProps> = ({
               onClick={handleFinish}
               leftIcon={<CheckCircle2 className="w-4 h-4" />}
             >
-              Complete Setup & Launch
+              {t('common.save')}
             </Button>
           )}
         </div>
